@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <!-- North & West India Map (Saffron Orange) -->
+    <path
+        android:fillColor="#FA8520"
+        android:pathData="M48,22 L51,20 L55,22 L57,25 L61,23 L60,28 L58,32 L59,36 L57,39 L62,43 L57,48 L51,53 L47,58 L42,63 L40,68 L39,73 L37,71 L33,69 L30,66 L31,63 L27,62 L28,59 L32,58 L34,52 L36,50 L35,46 L38,44 L44,42 L46,38 L45,34 L47,28 Z" />
+
+    <!-- East & South India Map (Vibrant Green) -->
+    <path
+        android:fillColor="#0FA338"
+        android:pathData="M57,48 L63,51 L70,53 L76,52 L79,49 L85,45 L88,46 L94,47 L98,52 L94,55 L92,59 L93,65 L90,67 L86,63 L83,65 L81,61 L79,66 L80,72 L77,77 L72,84 L66,92 L60,100 L58,95 L55,90 L53,80 L51,68 L42,63 L47,58 L51,53 Z" />
+
+    <!-- Center Handshake Body (Orange with Navy Blue stroke detail) -->
+    <path
+        android:fillColor="#FA8520"
+        android:pathData="M42,54 L48,50 L54,52 L51,59 L44,60 Z" />
+    <path
+        android:fillColor="#FA8520"
+        android:pathData="M50,53 L57,52 L63,57 L70,66 L65,70 L55,63 L49,58 Z" />
+
+    <!-- Clasp Loops -->
+    <path
+        android:fillColor="#FA8520"
+        android:pathData="M42,62 A2.5,2.5 0 1,0 42,67 A2.5,2.5 0 1,0 42,62 Z" />
+    <path
+        android:fillColor="#FA8520"
+        android:pathData="M45,65 A2.5,2.5 0 1,0 45,70 A2.5,2.5 0 1,0 45,65 Z" />
+    <path
+        android:fillColor="#FA8520"
+        android:pathData="M48,68 A2.5,2.5 0 1,0 48,73 A2.5,2.5 0 1,0 48,68 Z" />
+    <path
+        android:fillColor="#FA8520"
+        android:pathData="M52,71 A2.5,2.5 0 1,0 52,76 A2.5,2.5 0 1,0 52,71 Z" />
+
+    <!-- Three Blue Dots in Triangle Formation on Handshake -->
+    <path
+        android:fillColor="#1E70DC"
+        android:pathData="M58,57 A1.8,1.8 0 1,0 58,60.6 A1.8,1.8 0 1,0 58,57 Z" />
+    <path
+        android:fillColor="#1E70DC"
+        android:pathData="M55.5,61.5 A1.8,1.8 0 1,0 55.5,65.1 A1.8,1.8 0 1,0 55.5,61.5 Z" />
+    <path
+        android:fillColor="#1E70DC"
+        android:pathData="M60.5,61.5 A1.8,1.8 0 1,0 60.5,65.1 A1.8,1.8 0 1,0 60.5,61.5 Z" />
+</vector>

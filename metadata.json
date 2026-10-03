@@ -1,0 +1,6 @@
+{
+  "name": "Bharat Mitra",
+  "description": "Bharat Mitra Official - Rides, Car Rental, Verified Drivers & Elite Emergency Network",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
