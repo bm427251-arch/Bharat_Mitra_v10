@@ -1,36 +1,35 @@
 name: Build APK
-
 on: [push]
-
 jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout Code
-        uses: actions/checkout@v4
-
-      - name: Set up JDK 17
-        uses: actions/setup-java@v4
+      - uses: actions/checkout@v3
+      - uses: actions/setup-java@v3
         with:
           distribution: 'zulu'
           java-version: '17'
 
-      - name: Grant execute permission for gradlew
-        run: chmod +x gradlew
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.22.0'
+          channel: 'stable'
 
-      - name: Setup Gradle
-        uses: gradle/actions/setup-gradle@v3
-
-      - name: Build APK with Gradle
-        run: ./gradlew assembleDebug --stacktrace --no-daemon
-
-      - name: Prepare APK Output Structure
+      - name: Fix Gradle Wrapper
         run: |
-          mkdir -p build/app/outputs/flutter-apk
-          cp app/build/outputs/apk/debug/app-debug.apk build/app/outputs/flutter-apk/app-release.apk
+          flutter create . --platforms=android
+          chmod +x android/gradlew || true
+          chmod +x gradlew || true
 
-      - name: Upload APK Artifact
+      - name: Get dependencies
+        run: flutter pub get
+
+      - name: Build APK
+        run: flutter build apk --release --no-tree-shake-icons
+
+      - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
-          name: app-release
+          name: Bharat-Mitra-APK
           path: build/app/outputs/flutter-apk/app-release.apk
