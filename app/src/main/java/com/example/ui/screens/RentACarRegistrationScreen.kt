@@ -49,6 +49,7 @@ fun RentACarRegistrationScreen(
     var address by remember { mutableStateOf("Barasat, North 24 Parganas") }
     var bankDetails by remember { mutableStateOf("") }
     var isPhotoUploaded by remember { mutableStateOf(false) }
+    var showSuccessDialog by remember { mutableStateOf(false) }
 
     // Multi-car fleet list
     var carList by remember {
@@ -57,6 +58,17 @@ fun RentACarRegistrationScreen(
                 RentCarItem("car_1", "Toyota Innova Crysta", "WB-02-AK-7719", "", "RC-9912", "National Ins"),
                 RentCarItem("car_2", "Maruti Dzire Tour", "WB-25-AB-4921", "", "RC-4412", "Digit Ins")
             )
+        )
+    }
+
+    if (showSuccessDialog) {
+        com.example.ui.components.PremiumSuccessDialog(
+            title = "Rent Business Profile Registered!",
+            message = "Your Rent A Car business has been successfully registered on Bharat Mitra with ${carList.size} vehicles listed.",
+            onDismiss = {
+                showSuccessDialog = false
+                onBack()
+            }
         )
     }
 
@@ -282,34 +294,41 @@ fun RentACarRegistrationScreen(
             // Submit Button
             item {
                 Spacer(modifier = Modifier.height(10.dp))
-                Button(
-                    onClick = {
-                        if (ownerName.isNotBlank() && phone.isNotBlank()) {
-                            viewModel.registerRentOwner(
-                                ownerName = ownerName,
-                                companyName = companyName,
-                                phone = phone,
-                                address = address,
-                                pan = panNumber.ifBlank { "ABCDE1234F" },
-                                licence = businessLicence.ifBlank { "TRD/2026/BAR/7710" },
-                                bank = bankDetails.ifBlank { "SBI • A/C: XXXX-XXXX-5541 • IFSC: SBIN0000024" },
-                                cars = carList
-                            )
-                            onBack()
-                        } else {
-                            Toast.makeText(context, "Please enter Owner Name and Phone Number", Toast.LENGTH_SHORT).show()
-                        }
-                    },
+                Box(
                     modifier = Modifier
                         .fillMaxWidth()
                         .height(52.dp)
+                        .clip(RoundedCornerShape(14.dp))
+                        .background(
+                            androidx.compose.ui.graphics.Brush.horizontalGradient(
+                                listOf(Color(0xFFFA8520), Color(0xFF138808))
+                            )
+                        )
+                        .clickable {
+                            if (ownerName.isNotBlank() && phone.isNotBlank()) {
+                                viewModel.registerRentOwner(
+                                    ownerName = ownerName,
+                                    companyName = companyName,
+                                    phone = phone,
+                                    address = address,
+                                    pan = panNumber.ifBlank { "ABCDE1234F" },
+                                    licence = businessLicence.ifBlank { "TRD/2026/BAR/7710" },
+                                    bank = bankDetails.ifBlank { "SBI • A/C: XXXX-XXXX-5541 • IFSC: SBIN0000024" },
+                                    cars = carList
+                                )
+                                showSuccessDialog = true
+                            } else {
+                                Toast.makeText(context, "Please enter Owner Name and Phone Number", Toast.LENGTH_SHORT).show()
+                            }
+                        }
                         .testTag("submit_rent_owner_btn"),
-                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF1DB954)),
-                    shape = RoundedCornerShape(14.dp)
+                    contentAlignment = Alignment.Center
                 ) {
-                    Icon(Icons.Default.CheckCircle, contentDescription = null)
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Text("SAVE RENT A CAR BUSINESS PROFILE", fontWeight = FontWeight.Bold)
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Icon(Icons.Default.CheckCircle, contentDescription = null, tint = Color.White)
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text("SAVE RENT A CAR BUSINESS PROFILE", fontWeight = FontWeight.Bold, color = Color.White, fontSize = 14.sp)
+                    }
                 }
                 Spacer(modifier = Modifier.height(24.dp))
             }

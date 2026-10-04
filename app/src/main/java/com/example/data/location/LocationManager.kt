@@ -26,7 +26,7 @@ class LocationManager(private val context: Context) {
     private val _currentLocation = MutableStateFlow<Location?>(null)
     val currentLocation: StateFlow<Location?> = _currentLocation.asStateFlow()
 
-    private val _currentAddress = MutableStateFlow("Your Location: Colony More, Jessore Road, Barasat, WB 700124")
+    private val _currentAddress = MutableStateFlow("Detecting exact GPS location...")
     val currentAddress: StateFlow<String> = _currentAddress.asStateFlow()
 
     private val _accuracyMeters = MutableStateFlow<Float?>(12.4f)
@@ -49,11 +49,11 @@ class LocationManager(private val context: Context) {
         return isEnabled
     }
 
-    // High accuracy location request with 5000ms interval and 2000ms fastest interval
-    private val locationRequest = LocationRequest.Builder(Priority.PRIORITY_HIGH_ACCURACY, 5000L)
-        .setMinUpdateIntervalMillis(2000L)
+    // High accuracy location request with 3000ms interval and 1500ms fastest interval
+    private val locationRequest = LocationRequest.Builder(Priority.PRIORITY_HIGH_ACCURACY, 3000L)
+        .setMinUpdateIntervalMillis(1500L)
         .setWaitForAccurateLocation(true)
-        .setMaxUpdateDelayMillis(7000L)
+        .setMaxUpdateDelayMillis(5000L)
         .build()
 
     @SuppressLint("MissingPermission")
@@ -142,9 +142,9 @@ class LocationManager(private val context: Context) {
         _currentLocation.value = loc
         _accuracyMeters.value = loc.accuracy
 
-        // If accuracy > 50m, trigger fresh high-accuracy location request
-        if (loc.accuracy > 50f) {
-            Log.w("LocationManager", "Accuracy is ${loc.accuracy}m > 50m. Requesting higher accuracy fix...")
+        // If accuracy > 30m, trigger fresh high-accuracy location request
+        if (loc.accuracy > 30f) {
+            Log.w("LocationManager", "Accuracy is ${loc.accuracy}m > 30m. Requesting higher accuracy fix...")
         }
 
         // Reverse Geocode
@@ -180,7 +180,7 @@ class LocationManager(private val context: Context) {
     }
 
     private fun formatFallbackAddress(lat: Double, lng: Double): String {
-        return "Your Location: Colony More, Jessore Road, Barasat, WB 700124"
+        return "Current Location (${String.format(Locale.US, "%.4f", lat)}, ${String.format(Locale.US, "%.4f", lng)})"
     }
 
     companion object {

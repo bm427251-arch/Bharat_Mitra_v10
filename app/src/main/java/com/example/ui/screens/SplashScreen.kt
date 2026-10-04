@@ -1,162 +1,99 @@
 package com.example.ui.screens
 
-import androidx.compose.animation.*
+import androidx.compose.animation.core.*
 import androidx.compose.foundation.background
-import androidx.compose.foundation.gestures.awaitEachGesture
-import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowForward
-import androidx.compose.material.icons.filled.Security
-import androidx.compose.material3.*
+import androidx.compose.material.icons.filled.Shield
+import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Text
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.example.model.ScreenState
-import com.example.ui.components.BharatMitraLogo
-import com.example.ui.theme.DarkBackground
-import com.example.ui.theme.DarkSurface
-import com.example.ui.theme.SaffronPrimary
-import com.example.viewmodel.MainViewModel
+import kotlinx.coroutines.delay
 
-/**
- * Splash Screen Requirement 1:
- * - The app must display a custom-coded logo (Indian map with Orange and Green colors,
- *   a handshake in the middle with 3 blue dots, and "BHARAT MITRA" text below).
- *   No static image files; rendered via code (Canvas).
- * - Hidden Admin Entry: Long-pressing the logo continuously for 7 seconds without any
- *   counter should directly navigate to the Admin Panel.
- */
 @Composable
 fun SplashScreen(
-    viewModel: MainViewModel,
-    onNavigateToHome: () -> Unit
+    onSplashComplete: () -> Unit
 ) {
-    val customLogoUri by viewModel.customLogoUri.collectAsState()
+    val infiniteTransition = rememberInfiniteTransition(label = "splash_logo_anim")
+    val scale by infiniteTransition.animateFloat(
+        initialValue = 0.8f,
+        targetValue = 1.2f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(1000, easing = FastOutSlowInEasing),
+            repeatMode = RepeatMode.Reverse
+        ),
+        label = "scale_anim"
+    )
+
+    LaunchedEffect(Unit) {
+        delay(2000L)
+        onSplashComplete()
+    }
 
     Box(
         modifier = Modifier
             .fillMaxSize()
             .background(
-                Brush.verticalGradient(
-                    listOf(
-                        Color(0xFF0D1B68),
-                        Color(0xFF091244),
-                        Color(0xFF050B28)
-                    )
+                brush = Brush.verticalGradient(
+                    colors = listOf(Color(0xFF0D1B68), Color(0xFF070E38))
                 )
             )
-            .testTag("splash_screen_root"),
+            .testTag("splash_screen_view"),
         contentAlignment = Alignment.Center
     ) {
         Column(
             horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.Center,
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(24.dp)
+            verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            // Interactive Custom-Coded Logo with Hidden 7-second Long Press (NO VISIBLE COUNTER)
             Box(
                 modifier = Modifier
-                    .clip(RoundedCornerShape(32.dp))
-                    .pointerInput(Unit) {
-                        awaitEachGesture {
-                            awaitFirstDown(requireUnconsumed = false)
-                            // Start 7-second continuous press timer
-                            viewModel.startAdminLongPress()
-
-                            // Wait for pointer release or cancel
-                            do {
-                                val event = awaitPointerEvent()
-                                val isPressed = event.changes.any { it.pressed }
-                                if (!isPressed) {
-                                    viewModel.cancelAdminLongPress()
-                                }
-                            } while (event.changes.any { it.pressed })
-                            viewModel.cancelAdminLongPress()
-                        }
-                    }
-                    .testTag("splash_interactive_logo_box"),
+                    .scale(scale)
+                    .size(110.dp)
+                    .clip(CircleShape)
+                    .background(
+                        brush = Brush.linearGradient(
+                            colors = listOf(Color(0xFFFA8520), Color(0xFF138808))
+                        )
+                    ),
                 contentAlignment = Alignment.Center
             ) {
-                BharatMitraLogo(
-                    size = 230.dp,
-                    showText = true,
-                    animateGlow = true,
-                    customLogoUri = customLogoUri
+                Icon(
+                    imageVector = Icons.Default.Shield,
+                    contentDescription = "Bharat Mitra Logo",
+                    tint = Color.White,
+                    modifier = Modifier.size(60.dp)
                 )
             }
-
-            Spacer(modifier = Modifier.height(28.dp))
 
             Text(
-                text = "Together We Protect, Serve & Travel",
-                style = MaterialTheme.typography.bodyMedium.copy(
-                    fontWeight = FontWeight.Medium,
-                    color = Color(0xFF94A3B8),
-                    letterSpacing = 0.5.sp
-                ),
-                textAlign = TextAlign.Center
+                text = "BHARAT MITRA",
+                style = MaterialTheme.typography.headlineMedium.copy(
+                    color = Color.White,
+                    fontWeight = FontWeight.Black,
+                    letterSpacing = 3.sp
+                )
             )
 
-            Spacer(modifier = Modifier.height(48.dp))
-
-            // Enter App Button
-            Button(
-                onClick = onNavigateToHome,
-                modifier = Modifier
-                    .fillMaxWidth(0.75f)
-                    .height(52.dp)
-                    .testTag("splash_enter_button"),
-                colors = ButtonDefaults.buttonColors(containerColor = SaffronPrimary),
-                shape = RoundedCornerShape(16.dp),
-                elevation = ButtonDefaults.buttonElevation(defaultElevation = 6.dp)
-            ) {
-                Text(
-                    text = "ENTER APPLICATION",
-                    fontSize = 14.sp,
-                    fontWeight = FontWeight.Bold,
-                    letterSpacing = 1.sp
+            Text(
+                text = "West Bengal • Zero Commission Ride Network",
+                style = MaterialTheme.typography.bodyMedium.copy(
+                    color = Color.White.copy(alpha = 0.85f),
+                    fontSize = 13.sp,
+                    fontWeight = FontWeight.Medium
                 )
-                Spacer(modifier = Modifier.width(8.dp))
-                Icon(
-                    Icons.AutoMirrored.Filled.ArrowForward,
-                    contentDescription = null,
-                    modifier = Modifier.size(18.dp)
-                )
-            }
-
-            Spacer(modifier = Modifier.height(20.dp))
-
-            // Discreet security notice
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.Center
-            ) {
-                Icon(
-                    Icons.Default.Security,
-                    contentDescription = null,
-                    tint = Color(0xFF64748B),
-                    modifier = Modifier.size(14.dp)
-                )
-                Spacer(modifier = Modifier.width(6.dp))
-                Text(
-                    text = "256-Bit Encrypted Community Network",
-                    fontSize = 11.sp,
-                    color = Color(0xFF64748B)
-                )
-            }
+            )
         }
     }
 }

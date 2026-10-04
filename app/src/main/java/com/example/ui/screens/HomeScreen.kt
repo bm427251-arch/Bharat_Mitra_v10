@@ -1,108 +1,239 @@
 package com.example.ui.screens
 
 import android.Manifest
+import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
+import android.location.Geocoder
+import android.location.Location
+import android.os.Looper
+import android.provider.Settings
 import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.*
+import androidx.compose.animation.core.*
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.gestures.awaitEachGesture
-import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.LazyRow
-import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowForward
+import androidx.compose.material.icons.automirrored.filled.ArrowForwardIos
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.compose.ui.window.Dialog
 import androidx.core.content.ContextCompat
-import coil.compose.AsyncImage
-import com.example.data.SampleData
-import com.example.model.RideOption
-import com.example.model.ScreenState
-import com.example.ui.components.BharatMitraLogo
-import com.example.ui.components.InteractiveMapCanvas
-import com.example.ui.theme.AshokaBlue
-import com.example.ui.theme.IndianGreen
-import com.example.ui.theme.NavySecondary
-import com.example.ui.theme.SaffronPrimary
 import com.example.viewmodel.MainViewModel
+import com.google.android.gms.location.*
+import com.google.android.gms.maps.CameraUpdateFactory
+import com.google.android.gms.maps.model.CameraPosition
+import com.google.android.gms.maps.model.LatLng
+import com.google.maps.android.compose.*
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+import java.util.Locale
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun HomeScreen(
     viewModel: MainViewModel,
-    onNavigateToRentCar: () -> Unit,
-    onNavigateToHireDriver: () -> Unit,
-    onNavigateToElite: () -> Unit,
+    onNavigateToRentCar: () -> Unit = {},
+    onNavigateToHireDriver: () -> Unit = {},
+    onNavigateToElite: () -> Unit = {},
     onNavigateToRiderCategory: () -> Unit = {},
     onNavigateToDriverCategory: () -> Unit = {},
     onNavigateToRentCategory: () -> Unit = {}
 ) {
     val context = LocalContext.current
-    val pickupLocation by viewModel.pickupLocation.collectAsState()
-    val dropLocation by viewModel.dropLocation.collectAsState()
-    val isDropConfirmed by viewModel.isDropConfirmed.collectAsState()
-    val selectedRideOption by viewModel.selectedRideOption.collectAsState()
-    val isAcSelected by viewModel.isAcSelected.collectAsState()
-    val calculatedFare by viewModel.calculatedFare.collectAsState()
-    val calculatedFareWithCommission by viewModel.calculatedFareWithCommission.collectAsState()
-    val platformCommissionAmount by viewModel.platformCommissionAmount.collectAsState()
-    val estimatedDistanceKm by viewModel.estimatedDistanceKm.collectAsState()
-    val mapDots by viewModel.mapDots.collectAsState()
-    val customLogoUri by viewModel.customLogoUri.collectAsState()
-    val appAnnouncement by viewModel.appAnnouncement.collectAsState()
-    val adminMessages by viewModel.adminMessages.collectAsState()
+    val coroutineScope = rememberCoroutineScope()
+    val haptic = LocalHapticFeedback.current
+    val shimmerBrush = rememberShimmerBrush()
 
-    // Real-time GPS location state
-    val currentLocation by viewModel.currentLocation.collectAsState()
-    val accuracyMeters by viewModel.accuracyMeters.collectAsState()
-    val isLocationLoading by viewModel.isLocationLoading.collectAsState()
-    val isGpsEnabled by viewModel.isGpsEnabled.collectAsState()
-    val dynamicSuggestions by viewModel.dynamicSuggestions.collectAsState()
+    // 100% Real Device Location state - NO hardcoded Barasat, NO hardcoded Ukiah
+    var pickupAddress by remember { mutableStateOf("Detecting your exact GPS location...") }
+    var dropAddress by remember { mutableStateOf("") }
+    var isLocationLoading by remember { mutableStateOf(false) }
+    var locationAccuracyMeters by remember { mutableStateOf<Float?>(null) }
+    var userLatLng by remember { mutableStateOf<LatLng?>(null) }
+    var selectedFleetTitle by remember { mutableStateOf<String?>("Toto (E-Rickshaw)") }
+    var showGpsDialog by remember { mutableStateOf(false) }
 
-    var dropSearchQuery by remember { mutableStateOf("") }
-    var isSearchingDrop by remember { mutableStateOf(false) }
-    var showUserInboxDialog by remember { mutableStateOf(false) }
-    var showComplaintDialog by remember { mutableStateOf(false) }
-    var showGpsEnableDialog by remember { mutableStateOf(false) }
+    val fusedLocationClient = remember { LocationServices.getFusedLocationProviderClient(context) }
+    val cameraPositionState = rememberCameraPositionState()
 
-    // Requirement 2: Handle permission request with rememberLauncherForActivityResult
+    var hasFinePermission by remember {
+        mutableStateOf(
+            ContextCompat.checkSelfPermission(
+                context,
+                Manifest.permission.ACCESS_FINE_LOCATION
+            ) == PackageManager.PERMISSION_GRANTED
+        )
+    }
+
+    // Filter out Android Studio default emulator mock locations (Ukiah, Google HQ)
+    fun isEmulatorDefaultLocation(lat: Double, lng: Double): Boolean {
+        val isUkiah = (lat in 39.0..39.3 && lng in -123.4..-123.0)
+        val isGoogleHq = (lat in 37.3..37.5 && lng in -122.2..-122.0)
+        return isUkiah || isGoogleHq
+    }
+
+    // Check if GPS hardware is turned on
+    fun checkGpsEnabled(): Boolean {
+        val lm = context.getSystemService(Context.LOCATION_SERVICE) as? android.location.LocationManager
+        val isEnabled = lm?.isProviderEnabled(android.location.LocationManager.GPS_PROVIDER) == true ||
+                lm?.isProviderEnabled(android.location.LocationManager.NETWORK_PROVIDER) == true
+        if (!isEnabled) {
+            showGpsDialog = true
+        }
+        return isEnabled
+    }
+
+    // High accuracy location request with 3000ms interval
+    val locationRequest = remember {
+        LocationRequest.Builder(Priority.PRIORITY_HIGH_ACCURACY, 3000L)
+            .setMinUpdateIntervalMillis(1500L)
+            .setWaitForAccurateLocation(true)
+            .build()
+    }
+
+    // Function to get real current location
+    fun getCurrentStandingLocation() {
+        isLocationLoading = true
+
+        val fineGranted = ContextCompat.checkSelfPermission(
+            context,
+            Manifest.permission.ACCESS_FINE_LOCATION
+        ) == PackageManager.PERMISSION_GRANTED
+        hasFinePermission = fineGranted
+
+        if (!fineGranted) {
+            isLocationLoading = false
+            return
+        }
+
+        if (!checkGpsEnabled()) {
+            isLocationLoading = false
+            return
+        }
+
+        try {
+            fusedLocationClient.getCurrentLocation(Priority.PRIORITY_HIGH_ACCURACY, null)
+                .addOnSuccessListener { location: Location? ->
+                    isLocationLoading = false
+                    if (location != null) {
+                        if (isEmulatorDefaultLocation(location.latitude, location.longitude)) {
+                            Toast.makeText(
+                                context,
+                                "GPS not found on emulator, please test on real device",
+                                Toast.LENGTH_LONG
+                            ).show()
+                            pickupAddress = "GPS not found on emulator, please test on real device"
+                            return@addOnSuccessListener
+                        }
+
+                        val currentLatLng = LatLng(location.latitude, location.longitude)
+                        userLatLng = currentLatLng
+                        locationAccuracyMeters = location.accuracy
+
+                        // Camera moves to exact standing currentLatLng
+                        coroutineScope.launch {
+                            cameraPositionState.animate(
+                                CameraUpdateFactory.newLatLngZoom(currentLatLng, 16.5f),
+                                durationMs = 1000
+                            )
+                        }
+
+                        // Reverse geocode to exact standing address
+                        coroutineScope.launch(Dispatchers.IO) {
+                            try {
+                                val geocoder = Geocoder(context, Locale.getDefault())
+                                @Suppress("DEPRECATION")
+                                val addresses = geocoder.getFromLocation(location.latitude, location.longitude, 1)
+                                val resolved = addresses?.firstOrNull()?.getAddressLine(0)
+                                withContext(Dispatchers.Main) {
+                                    if (!resolved.isNullOrBlank()) {
+                                        pickupAddress = resolved
+                                        viewModel.setPickupLocation(resolved)
+                                    } else {
+                                        val coords = "Exact Location: ${String.format(Locale.US, "%.5f", location.latitude)}, ${String.format(Locale.US, "%.5f", location.longitude)}"
+                                        pickupAddress = coords
+                                        viewModel.setPickupLocation(coords)
+                                    }
+                                }
+                            } catch (e: Exception) {
+                                withContext(Dispatchers.Main) {
+                                    val coords = "Exact Location: ${String.format(Locale.US, "%.5f", location.latitude)}, ${String.format(Locale.US, "%.5f", location.longitude)}"
+                                    pickupAddress = coords
+                                    viewModel.setPickupLocation(coords)
+                                }
+                            }
+                        }
+                    } else {
+                        Toast.makeText(
+                            context,
+                            "GPS not found on emulator, please test on real device",
+                            Toast.LENGTH_LONG
+                        ).show()
+                        if (pickupAddress.contains("Detecting")) {
+                            pickupAddress = "GPS not found on emulator, please test on real device"
+                        }
+                    }
+                }
+                .addOnFailureListener {
+                    isLocationLoading = false
+                    Toast.makeText(
+                        context,
+                        "GPS not found on emulator, please test on real device",
+                        Toast.LENGTH_SHORT
+                    ).show()
+                }
+        } catch (e: SecurityException) {
+            isLocationLoading = false
+        } catch (e: Exception) {
+            isLocationLoading = false
+        }
+    }
+
+    // Permission launcher
     val locationPermissionLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.RequestMultiplePermissions()
     ) { permissions ->
         val isGranted = permissions[Manifest.permission.ACCESS_FINE_LOCATION] == true ||
                 permissions[Manifest.permission.ACCESS_COARSE_LOCATION] == true
+        hasFinePermission = permissions[Manifest.permission.ACCESS_FINE_LOCATION] == true
         if (isGranted) {
-            viewModel.startLocationUpdates()
+            getCurrentStandingLocation()
+        } else {
+            pickupAddress = "Location permission denied. Please grant location access."
         }
     }
 
-    // Launch location updates on startup
+    // On HomeScreen launch: check permission ACCESS_FINE_LOCATION and fetch
     LaunchedEffect(Unit) {
-        val hasFine = ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED
-        val hasCoarse = ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_COARSE_LOCATION) == PackageManager.PERMISSION_GRANTED
-        if (hasFine || hasCoarse) {
-            viewModel.startLocationUpdates()
+        val fineGranted = ContextCompat.checkSelfPermission(
+            context,
+            Manifest.permission.ACCESS_FINE_LOCATION
+        ) == PackageManager.PERMISSION_GRANTED
+        if (fineGranted) {
+            getCurrentStandingLocation()
         } else {
             locationPermissionLauncher.launch(
                 arrayOf(
@@ -111,898 +242,585 @@ fun HomeScreen(
                 )
             )
         }
-        if (!viewModel.checkGpsStatus()) {
-            showGpsEnableDialog = true
-        }
     }
 
-    // Requirement 4: Drop suggestions with current location bias (dynamic distance)
-    val filteredSuggestions = remember(dropSearchQuery, dynamicSuggestions) {
-        if (dropSearchQuery.isBlank()) {
-            dynamicSuggestions
+    // Continuous location updates when permission is granted
+    DisposableEffect(hasFinePermission) {
+        if (hasFinePermission) {
+            val locationCallback = object : LocationCallback() {
+                override fun onLocationResult(result: LocationResult) {
+                    val loc = result.lastLocation ?: return
+                    if (isEmulatorDefaultLocation(loc.latitude, loc.longitude)) return
+
+                    val currentLatLng = LatLng(loc.latitude, loc.longitude)
+                    userLatLng = currentLatLng
+                    locationAccuracyMeters = loc.accuracy
+
+                    coroutineScope.launch(Dispatchers.IO) {
+                        try {
+                            val geocoder = Geocoder(context, Locale.getDefault())
+                            @Suppress("DEPRECATION")
+                            val addresses = geocoder.getFromLocation(loc.latitude, loc.longitude, 1)
+                            val resolved = addresses?.firstOrNull()?.getAddressLine(0)
+                            if (!resolved.isNullOrBlank()) {
+                                withContext(Dispatchers.Main) {
+                                    pickupAddress = resolved
+                                    viewModel.setPickupLocation(resolved)
+                                }
+                            }
+                        } catch (e: Exception) {
+                            // ignore
+                        }
+                    }
+                }
+            }
+
+            try {
+                fusedLocationClient.requestLocationUpdates(
+                    locationRequest,
+                    locationCallback,
+                    Looper.getMainLooper()
+                )
+            } catch (e: SecurityException) {
+                // ignore
+            }
+
+            onDispose {
+                fusedLocationClient.removeLocationUpdates(locationCallback)
+            }
         } else {
-            dynamicSuggestions.filter {
-                it.title.contains(dropSearchQuery, ignoreCase = true) ||
-                it.subtitle.contains(dropSearchQuery, ignoreCase = true)
-            }
+            onDispose {}
         }
     }
 
-    Scaffold(
-        topBar = {
-            Surface(
-                color = MaterialTheme.colorScheme.surface,
-                shadowElevation = 3.dp
-            ) {
-                Column(modifier = Modifier.fillMaxWidth().statusBarsPadding()) {
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(horizontal = 16.dp, vertical = 10.dp),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        // Secret Admin Entry: Long-pressing app title or logo continuously for 7 seconds without counter
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            modifier = Modifier
-                                .clip(RoundedCornerShape(8.dp))
-                                .pointerInput(Unit) {
-                                    awaitEachGesture {
-                                        awaitFirstDown(requireUnconsumed = false)
-                                        // Start 7-second continuous silent press
-                                        viewModel.startAdminLongPress()
-                                        do {
-                                            val event = awaitPointerEvent()
-                                            val isPressed = event.changes.any { it.pressed }
-                                            if (!isPressed) {
-                                                viewModel.cancelAdminLongPress()
-                                            }
-                                        } while (event.changes.any { it.pressed })
-                                        viewModel.cancelAdminLongPress()
-                                    }
-                                }
-                                .testTag("top_app_title_logo_area")
-                        ) {
-                            if (!customLogoUri.isNullOrBlank()) {
-                                AsyncImage(
-                                    model = customLogoUri,
-                                    contentDescription = "Logo",
-                                    modifier = Modifier
-                                        .size(36.dp)
-                                        .clip(CircleShape)
-                                )
-                            } else {
-                                Box(
-                                    modifier = Modifier
-                                        .size(36.dp)
-                                        .clip(CircleShape)
-                                        .background(Color(0xFF0D1B68)),
-                                    contentAlignment = Alignment.Center
-                                ) {
-                                    BharatMitraLogo(
-                                        size = 32.dp,
-                                        showText = false,
-                                        animateGlow = false
-                                    )
-                                }
-                            }
-
-                            Spacer(modifier = Modifier.width(10.dp))
-
-                            Column {
-                                Text(
-                                    text = "BHARAT MITRA",
-                                    style = MaterialTheme.typography.titleMedium.copy(
-                                        fontWeight = FontWeight.ExtraBold,
-                                        letterSpacing = 1.sp
-                                    )
-                                )
-                                Row(verticalAlignment = Alignment.CenterVertically) {
-                                    Box(
-                                        modifier = Modifier
-                                            .size(7.dp)
-                                            .clip(CircleShape)
-                                            .background(IndianGreen)
-                                    )
-                                    Spacer(modifier = Modifier.width(4.dp))
-                                    Text(
-                                        text = "Live GPS Active • WB Circle",
-                                        fontSize = 11.sp,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                                    )
-                                }
-                            }
-                        }
-
-                        // Top Actions: Inbox Messages & Elite SOS
-                        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                            // Direct Messages Inbox Icon
-                            IconButton(
-                                onClick = { showUserInboxDialog = true },
-                                modifier = Modifier.size(36.dp).testTag("user_inbox_btn")
-                            ) {
-                                BadgedBox(
-                                    badge = {
-                                        if (adminMessages.isNotEmpty()) {
-                                            Badge { Text("${adminMessages.size}") }
-                                        }
-                                    }
-                                ) {
-                                    Icon(Icons.Default.Notifications, contentDescription = "Messages", tint = AshokaBlue)
-                                }
-                            }
-
-                            // Quick SOS Button
-                            OutlinedButton(
-                                onClick = onNavigateToElite,
-                                modifier = Modifier
-                                    .height(36.dp)
-                                    .testTag("top_bar_sos_btn"),
-                                colors = ButtonDefaults.outlinedButtonColors(contentColor = SaffronPrimary),
-                                border = androidx.compose.foundation.BorderStroke(1.dp, SaffronPrimary),
-                                contentPadding = PaddingValues(horizontal = 10.dp, vertical = 4.dp)
-                            ) {
-                                Icon(Icons.Default.Shield, contentDescription = null, modifier = Modifier.size(16.dp))
-                                Spacer(modifier = Modifier.width(4.dp))
-                                Text("Elite SOS", fontSize = 12.sp, fontWeight = FontWeight.Bold)
-                            }
-                        }
-                    }
-
-                    // Dynamic Admin Announcement Banner
-                    if (appAnnouncement.isNotBlank()) {
-                        Surface(
-                            color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.7f),
-                            modifier = Modifier.fillMaxWidth()
-                        ) {
-                            Row(
-                                modifier = Modifier.padding(horizontal = 14.dp, vertical = 5.dp),
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                Icon(Icons.Default.Campaign, contentDescription = null, tint = SaffronPrimary, modifier = Modifier.size(16.dp))
-                                Spacer(modifier = Modifier.width(6.dp))
-                                Text(
-                                    text = appAnnouncement,
-                                    fontSize = 11.sp,
-                                    fontWeight = FontWeight.Medium,
-                                    color = MaterialTheme.colorScheme.onPrimaryContainer,
-                                    maxLines = 1
-                                )
-                            }
-                        }
-                    }
-                }
-            }
-        },
-        bottomBar = {
-            // Requirement 3 & 4: Dedicated 4-Tab Navigation: Home, Rent A Car, Hire Driver, Elite
-            // (Dedicated Elite Profile & Form resides exclusively inside the Elite section)
-            NavigationBar(
-                containerColor = MaterialTheme.colorScheme.surface,
-                tonalElevation = 6.dp,
-                modifier = Modifier.testTag("main_bottom_nav_bar")
-            ) {
-                NavigationBarItem(
-                    selected = true,
-                    onClick = { /* Already on Home */ },
-                    icon = { Icon(Icons.Default.Home, contentDescription = "Home") },
-                    label = { Text("Home", fontWeight = FontWeight.Bold) },
-                    colors = NavigationBarItemDefaults.colors(
-                        selectedIconColor = SaffronPrimary,
-                        selectedTextColor = SaffronPrimary,
-                        indicatorColor = SaffronPrimary.copy(alpha = 0.15f)
-                    ),
-                    modifier = Modifier.testTag("nav_item_home")
-                )
-
-                NavigationBarItem(
-                    selected = false,
-                    onClick = onNavigateToRentCar,
-                    icon = { Icon(Icons.Default.CarRental, contentDescription = "Rent A Car") },
-                    label = { Text("Rent Car") },
-                    modifier = Modifier.testTag("nav_item_rent_car")
-                )
-
-                NavigationBarItem(
-                    selected = false,
-                    onClick = onNavigateToHireDriver,
-                    icon = { Icon(Icons.Default.PersonSearch, contentDescription = "Hire Driver") },
-                    label = { Text("Hire Driver") },
-                    modifier = Modifier.testTag("nav_item_hire_driver")
-                )
-
-                NavigationBarItem(
-                    selected = false,
-                    onClick = onNavigateToElite,
-                    icon = { Icon(Icons.Default.Shield, contentDescription = "Elite") },
-                    label = { Text("Elite") },
-                    modifier = Modifier.testTag("nav_item_elite")
-                )
-            }
-        }
-    ) { innerPadding ->
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(innerPadding)
-        ) {
-            // Live Interactive Map Dashboard (Taking top half of the screen)
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .weight(if (isDropConfirmed) 0.85f else 1.15f)
-                    .padding(horizontal = 12.dp, vertical = 6.dp)
-            ) {
-                InteractiveMapCanvas(
-                    userGpsTitle = "Barasat",
-                    mapDots = mapDots,
-                    selectedRadiusKm = 3,
-                    onSelectLandmark = { landmark ->
-                        viewModel.setDropLocation(landmark)
-                        dropSearchQuery = landmark
-                        viewModel.confirmDropLocation()
-                    }
-                )
-
-                // Open Google Map View FAB button
-                FloatingActionButton(
-                    onClick = { viewModel.navigateTo(ScreenState.MAP_VIEW) },
-                    modifier = Modifier
-                        .align(Alignment.TopEnd)
-                        .padding(8.dp)
-                        .size(38.dp)
-                        .testTag("open_full_map_btn"),
-                    containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.92f),
-                    contentColor = SaffronPrimary,
-                    shape = CircleShape
-                ) {
-                    Icon(Icons.Default.Map, contentDescription = "Open Google Map", modifier = Modifier.size(20.dp))
-                }
-            }
-
-            // Booking Form Section
-            Card(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .weight(if (isDropConfirmed) 1.25f else 0.95f),
-                shape = RoundedCornerShape(topStart = 22.dp, topEnd = 22.dp),
-                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-                elevation = CardDefaults.cardElevation(defaultElevation = 8.dp)
-            ) {
-                LazyColumn(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .padding(horizontal = 16.dp, vertical = 12.dp),
-                    verticalArrangement = Arrangement.spacedBy(10.dp)
-                ) {
-                    // 1. HOME SCREEN - 3 Main Category Cards in Grid (Rider, Driver, Rent A Car)
-                    item {
-                        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.SpaceBetween,
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                Text(
-                                    text = "Join Partner Fleet / প্রোফাইল তৈরি করুন",
-                                    style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold),
-                                    color = AshokaBlue
-                                )
-                                Surface(
-                                    color = IndianGreen.copy(alpha = 0.15f),
-                                    shape = RoundedCornerShape(6.dp)
-                                ) {
-                                    Text(
-                                        text = "NEW REGISTRATION",
-                                        fontSize = 9.sp,
-                                        fontWeight = FontWeight.ExtraBold,
-                                        color = IndianGreen,
-                                        modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
-                                    )
-                                }
-                            }
-
-                            // Grid Row: Card 1 (Rider) & Card 2 (Driver)
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.spacedBy(10.dp)
-                            ) {
-                                // Card 1: RIDER (Bike + Toto)
-                                Card(
-                                    modifier = Modifier
-                                        .weight(1f)
-                                        .clickable { onNavigateToRiderCategory() }
-                                        .testTag("home_category_rider_card"),
-                                    shape = RoundedCornerShape(14.dp),
-                                    colors = CardDefaults.cardColors(containerColor = SaffronPrimary.copy(alpha = 0.08f)),
-                                    border = BorderStroke(1.5.dp, SaffronPrimary.copy(alpha = 0.45f))
-                                ) {
-                                    Column(
-                                        modifier = Modifier.padding(12.dp)
-                                    ) {
-                                        Row(
-                                            horizontalArrangement = Arrangement.spacedBy(4.dp),
-                                            verticalAlignment = Alignment.CenterVertically
-                                        ) {
-                                            Icon(Icons.Default.TwoWheeler, contentDescription = null, tint = SaffronPrimary, modifier = Modifier.size(20.dp))
-                                            Icon(Icons.Default.ElectricRickshaw, contentDescription = null, tint = IndianGreen, modifier = Modifier.size(20.dp))
-                                        }
-                                        Spacer(modifier = Modifier.height(6.dp))
-                                        Text("Rider - Bike / Toto", fontWeight = FontWeight.Bold, fontSize = 13.sp)
-                                        Text("বাইক, টোটো চালকদের জন্য", fontSize = 10.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                                    }
-                                }
-
-                                // Card 2: DRIVER (Car)
-                                Card(
-                                    modifier = Modifier
-                                        .weight(1f)
-                                        .clickable { onNavigateToDriverCategory() }
-                                        .testTag("home_category_driver_card"),
-                                    shape = RoundedCornerShape(14.dp),
-                                    colors = CardDefaults.cardColors(containerColor = IndianGreen.copy(alpha = 0.08f)),
-                                    border = BorderStroke(1.5.dp, IndianGreen.copy(alpha = 0.45f))
-                                ) {
-                                    Column(
-                                        modifier = Modifier.padding(12.dp)
-                                    ) {
-                                        Icon(Icons.Default.DirectionsCar, contentDescription = null, tint = IndianGreen, modifier = Modifier.size(22.dp))
-                                        Spacer(modifier = Modifier.height(6.dp))
-                                        Text("Driver - Car", fontWeight = FontWeight.Bold, fontSize = 13.sp)
-                                        Text("গাড়ি চালকদের জন্য", fontSize = 10.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                                    }
-                                }
-                            }
-
-                            // Card 3: RENT A CAR (Car with key)
-                            Card(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .clickable { onNavigateToRentCategory() }
-                                    .testTag("home_category_rent_card"),
-                                shape = RoundedCornerShape(14.dp),
-                                colors = CardDefaults.cardColors(containerColor = AshokaBlue.copy(alpha = 0.08f)),
-                                border = BorderStroke(1.5.dp, AshokaBlue.copy(alpha = 0.45f))
-                            ) {
-                                Row(
-                                    modifier = Modifier.fillMaxWidth().padding(12.dp),
-                                    verticalAlignment = Alignment.CenterVertically,
-                                    horizontalArrangement = Arrangement.SpaceBetween
-                                ) {
-                                    Row(verticalAlignment = Alignment.CenterVertically) {
-                                        Box(
-                                            modifier = Modifier.size(36.dp).clip(CircleShape).background(AshokaBlue),
-                                            contentAlignment = Alignment.Center
-                                        ) {
-                                            Row(verticalAlignment = Alignment.CenterVertically) {
-                                                Icon(Icons.Default.DirectionsCar, contentDescription = null, tint = Color.White, modifier = Modifier.size(16.dp))
-                                                Icon(Icons.Default.Key, contentDescription = null, tint = SaffronPrimary, modifier = Modifier.size(12.dp))
-                                            }
-                                        }
-                                        Spacer(modifier = Modifier.width(10.dp))
-                                        Column {
-                                            Text("Rent A Car", fontWeight = FontWeight.Bold, fontSize = 13.sp)
-                                            Text("গাড়ি ভাড়া মালিকদের জন্য", fontSize = 10.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                                        }
-                                    }
-                                    Icon(Icons.Default.ChevronRight, contentDescription = "Open", tint = AshokaBlue)
-                                }
-                            }
-                        }
-                    }
-
-                    // Pickup Location Box (Auto-detected from GPS with high-accuracy updates)
-                    item {
-                        Surface(
-                            shape = RoundedCornerShape(12.dp),
-                            color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.6f),
-                            modifier = Modifier.fillMaxWidth().testTag("pickup_location_card")
-                        ) {
-                            Column(modifier = Modifier.padding(horizontal = 12.dp, vertical = 10.dp)) {
-                                Row(
-                                    modifier = Modifier.fillMaxWidth(),
-                                    verticalAlignment = Alignment.CenterVertically
-                                ) {
-                                    Box(
-                                        modifier = Modifier
-                                            .size(10.dp)
-                                            .clip(CircleShape)
-                                            .background(IndianGreen)
-                                    )
-                                    Spacer(modifier = Modifier.width(10.dp))
-                                    Column(modifier = Modifier.weight(1f)) {
-                                        Row(verticalAlignment = Alignment.CenterVertically) {
-                                            Text(
-                                                "PICKUP LOCATION (GPS ACCURATE)",
-                                                fontSize = 10.sp,
-                                                fontWeight = FontWeight.Bold,
-                                                color = IndianGreen
-                                            )
-                                            if (isLocationLoading) {
-                                                Spacer(modifier = Modifier.width(6.dp))
-                                                CircularProgressIndicator(
-                                                    modifier = Modifier.size(12.dp).testTag("gps_loading_spinner"),
-                                                    strokeWidth = 1.5.dp,
-                                                    color = SaffronPrimary
-                                                )
-                                            }
-                                        }
-                                        Text(
-                                            text = pickupLocation,
-                                            fontSize = 13.sp,
-                                            fontWeight = FontWeight.SemiBold,
-                                            maxLines = 2
-                                        )
-                                    }
-                                    // Small GPS icon button near pickup field - on click re-centers to current accurate location
-                                    IconButton(
-                                        onClick = { viewModel.refreshAccurateLocation() },
-                                        modifier = Modifier.size(36.dp).testTag("gps_detect_btn")
-                                    ) {
-                                        Icon(
-                                            Icons.Default.GpsFixed,
-                                            contentDescription = "Re-center accurate GPS",
-                                            tint = SaffronPrimary,
-                                            modifier = Modifier.size(20.dp)
-                                        )
-                                    }
-                                }
-
-                                // Debug accuracy in meters & weak GPS indicator
-                                Spacer(modifier = Modifier.height(4.dp))
-                                Row(
-                                    modifier = Modifier.fillMaxWidth(),
-                                    horizontalArrangement = Arrangement.SpaceBetween,
-                                    verticalAlignment = Alignment.CenterVertically
-                                ) {
-                                    Row(verticalAlignment = Alignment.CenterVertically) {
-                                        Icon(
-                                            Icons.Default.MyLocation,
-                                            contentDescription = null,
-                                            tint = if ((accuracyMeters ?: 0f) > 50f) Color(0xFFD97706) else IndianGreen,
-                                            modifier = Modifier.size(12.dp)
-                                        )
-                                        Spacer(modifier = Modifier.width(4.dp))
-                                        Text(
-                                            text = if (accuracyMeters != null) {
-                                                "Accuracy: ±${accuracyMeters!!.toInt()}m ${if (accuracyMeters!! <= 50f) "(Accurate)" else "(Weak GPS > 50m)"}"
-                                            } else {
-                                                "Locking high-precision GPS..."
-                                            },
-                                            fontSize = 10.sp,
-                                            fontWeight = FontWeight.Medium,
-                                            color = if ((accuracyMeters ?: 0f) > 50f) Color(0xFFD97706) else MaterialTheme.colorScheme.onSurfaceVariant
-                                        )
-                                    }
-
-                                    // If accuracy > 50m, offer instant re-calibration
-                                    if ((accuracyMeters ?: 0f) > 50f) {
-                                        TextButton(
-                                            onClick = { viewModel.refreshAccurateLocation() },
-                                            contentPadding = PaddingValues(horizontal = 6.dp, vertical = 0.dp),
-                                            modifier = Modifier.height(24.dp)
-                                        ) {
-                                            Text("Recalibrate GPS", fontSize = 10.sp, fontWeight = FontWeight.Bold, color = SaffronPrimary)
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                    }
-
-                    // Drop Location Input with Live Suggestions
-                    item {
-                        OutlinedTextField(
-                            value = dropSearchQuery,
-                            onValueChange = {
-                                dropSearchQuery = it
-                                viewModel.setDropLocation(it)
-                                isSearchingDrop = true
-                            },
-                            label = { Text("Where to? (Type destination)") },
-                            placeholder = { Text("e.g., Barasat Court, Colony More, Barasat Station") },
-                            leadingIcon = {
-                                Box(modifier = Modifier.size(10.dp).clip(CircleShape).background(SaffronPrimary))
-                            },
-                            trailingIcon = {
-                                if (dropSearchQuery.isNotBlank()) {
-                                    IconButton(onClick = {
-                                        dropSearchQuery = ""
-                                        viewModel.resetDropLocation()
-                                    }) {
-                                        Icon(Icons.Default.Clear, contentDescription = "Clear")
-                                    }
-                                }
-                            },
-                            singleLine = true,
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .testTag("drop_location_input"),
-                            shape = RoundedCornerShape(12.dp)
-                        )
-                    }
-
-                    // Live Suggestions List
-                    if (!isDropConfirmed) {
-                        item {
-                            Text(
-                                text = "Quick Destination Suggestions:",
-                                fontSize = 11.sp,
-                                fontWeight = FontWeight.Bold,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                modifier = Modifier.padding(top = 4.dp)
-                            )
-                        }
-
-                        items(filteredSuggestions.take(4)) { suggestion ->
-                            Surface(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .clip(RoundedCornerShape(8.dp))
-                                    .clickable {
-                                        dropSearchQuery = suggestion.title
-                                        viewModel.setDropLocation(suggestion.title)
-                                        viewModel.confirmDropLocation()
-                                        isSearchingDrop = false
-                                    }
-                                    .testTag("suggestion_${suggestion.title.replace(" ", "_")}"),
-                                color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.35f)
-                            ) {
-                                Row(
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .padding(horizontal = 12.dp, vertical = 8.dp),
-                                    verticalAlignment = Alignment.CenterVertically
-                                ) {
-                                    Icon(Icons.Default.Place, contentDescription = null, tint = SaffronPrimary, modifier = Modifier.size(18.dp))
-                                    Spacer(modifier = Modifier.width(10.dp))
-                                    Column(modifier = Modifier.weight(1f)) {
-                                        Text(suggestion.title, fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
-                                        Text(suggestion.subtitle, fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                                    }
-                                    Text(
-                                        text = "${suggestion.dynamicDistanceKm ?: suggestion.distanceKmFromCenter} km from you",
-                                        fontSize = 11.sp,
-                                        fontWeight = FontWeight.Bold,
-                                        color = SaffronPrimary
-                                    )
-                                }
-                            }
-                        }
-
-                        item {
-                            Button(
-                                onClick = { viewModel.confirmDropLocation() },
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .height(48.dp)
-                                    .padding(top = 6.dp)
-                                    .testTag("confirm_drop_location_btn"),
-                                colors = ButtonDefaults.buttonColors(containerColor = SaffronPrimary),
-                                shape = RoundedCornerShape(12.dp)
-                            ) {
-                                Text("CONFIRM DESTINATION & VIEW FARES", fontWeight = FontWeight.Bold, fontSize = 13.sp)
-                                Spacer(modifier = Modifier.width(6.dp))
-                                Icon(Icons.AutoMirrored.Filled.ArrowForward, contentDescription = null, modifier = Modifier.size(16.dp))
-                            }
-                        }
-                    }
-
-                    // Requirement 2: Fare cards must NOT appear before selecting drop location; show ONLY after confirmation!
-                    if (isDropConfirmed) {
-                        item {
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.SpaceBetween,
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                Column {
-                                    Text(
-                                        text = "Select Ride & Standard Fare",
-                                        style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold)
-                                    )
-                                    Text(
-                                        text = "Distance: ~${String.format("%.1f", estimatedDistanceKm)} km to $dropLocation",
-                                        fontSize = 11.sp,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                                    )
-                                }
-
-                                TextButton(
-                                    onClick = { viewModel.resetDropLocation() },
-                                    modifier = Modifier.testTag("change_destination_btn")
-                                ) {
-                                    Text("Change Destination", fontSize = 11.sp, color = SaffronPrimary)
-                                }
-                            }
-                        }
-
-                        // Ride Options Horizontal Selector
-                        item {
-                            LazyRow(
-                                horizontalArrangement = Arrangement.spacedBy(10.dp),
-                                modifier = Modifier.fillMaxWidth()
-                            ) {
-                                items(SampleData.rideOptions) { option ->
-                                    val isSelected = selectedRideOption.id == option.id
-                                    val fare = if (isAcSelected && option.hasAcOption) option.baseFareAc else option.baseFareNonAc
-
-                                    Card(
-                                        modifier = Modifier
-                                            .width(135.dp)
-                                            .clickable { viewModel.selectRideOption(option) }
-                                            .testTag("ride_card_${option.id}"),
-                                        shape = RoundedCornerShape(14.dp),
-                                        colors = CardDefaults.cardColors(
-                                            containerColor = if (isSelected) SaffronPrimary.copy(alpha = 0.12f) else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f)
-                                        ),
-                                        border = if (isSelected) androidx.compose.foundation.BorderStroke(2.dp, SaffronPrimary) else null
-                                    ) {
-                                        Column(
-                                            modifier = Modifier.padding(10.dp),
-                                            verticalArrangement = Arrangement.spacedBy(4.dp)
-                                        ) {
-                                            Row(
-                                                modifier = Modifier.fillMaxWidth(),
-                                                horizontalArrangement = Arrangement.SpaceBetween,
-                                                verticalAlignment = Alignment.CenterVertically
-                                            ) {
-                                                Text(
-                                                    text = when (option.id) {
-                                                        "bike" -> "🏍️"
-                                                        "toto" -> "🛺"
-                                                        "auto" -> "🛺"
-                                                        "four_seater" -> "🚗"
-                                                        else -> "🚙"
-                                                    },
-                                                    fontSize = 20.sp
-                                                )
-                                                Surface(
-                                                    color = IndianGreen.copy(alpha = 0.2f),
-                                                    shape = RoundedCornerShape(6.dp)
-                                                ) {
-                                                    Text(
-                                                        "${option.etaMinutes}m",
-                                                        fontSize = 10.sp,
-                                                        fontWeight = FontWeight.Bold,
-                                                        color = IndianGreen,
-                                                        modifier = Modifier.padding(horizontal = 4.dp, vertical = 2.dp)
-                                                    )
-                                                }
-                                            }
-
-                                            Text(
-                                                text = option.name,
-                                                fontWeight = FontWeight.Bold,
-                                                fontSize = 13.sp
-                                            )
-                                            Text(
-                                                text = option.capacity,
-                                                fontSize = 10.sp,
-                                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                                            )
-                                            Text(
-                                                text = "₹$fare",
-                                                fontWeight = FontWeight.ExtraBold,
-                                                fontSize = 16.sp,
-                                                color = SaffronPrimary
-                                            )
-                                        }
-                                    }
-                                }
-                            }
-                        }
-
-                        // AC / Non-AC Switch for 4-Seater & 7-Seater
-                        if (selectedRideOption.hasAcOption) {
-                            item {
-                                Surface(
-                                    shape = RoundedCornerShape(10.dp),
-                                    color = MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.5f),
-                                    modifier = Modifier.fillMaxWidth()
-                                ) {
-                                    Row(
-                                        modifier = Modifier
-                                            .fillMaxWidth()
-                                            .padding(horizontal = 12.dp, vertical = 8.dp),
-                                        horizontalArrangement = Arrangement.SpaceBetween,
-                                        verticalAlignment = Alignment.CenterVertically
-                                    ) {
-                                        Row(verticalAlignment = Alignment.CenterVertically) {
-                                            Icon(Icons.Default.AcUnit, contentDescription = null, tint = AshokaBlue, modifier = Modifier.size(18.dp))
-                                            Spacer(modifier = Modifier.width(8.dp))
-                                            Column {
-                                                Text("Air Conditioning (AC)", fontSize = 12.sp, fontWeight = FontWeight.Bold)
-                                                Text(if (isAcSelected) "AC Active (+₹${selectedRideOption.baseFareAc - selectedRideOption.baseFareNonAc})" else "Non-AC Standard", fontSize = 10.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                                            }
-                                        }
-                                        Switch(
-                                            checked = isAcSelected,
-                                            onCheckedChange = { viewModel.toggleAc(it) },
-                                            modifier = Modifier.testTag("ac_toggle_switch")
-                                        )
-                                    }
-                                }
-                            }
-                        }
-
-                        // Confirm & Book Ride Button
-                        item {
-                            Column {
-                                Button(
-                                    onClick = { viewModel.bookCurrentRide() },
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .height(52.dp)
-                                        .padding(top = 4.dp)
-                                        .testTag("book_ride_button"),
-                                    colors = ButtonDefaults.buttonColors(containerColor = SaffronPrimary),
-                                    shape = RoundedCornerShape(14.dp)
-                                ) {
-                                    Text(
-                                        text = "BOOK ${selectedRideOption.name.uppercase()} • ₹$calculatedFareWithCommission",
-                                        fontSize = 14.sp,
-                                        fontWeight = FontWeight.ExtraBold,
-                                        letterSpacing = 0.5.sp
-                                    )
-                                }
-                                Row(
-                                    modifier = Modifier.fillMaxWidth().padding(top = 4.dp),
-                                    horizontalArrangement = Arrangement.Center
-                                ) {
-                                    Text(
-                                        text = "Base ₹$calculatedFare + 15% Platform Commission (₹$platformCommissionAmount)",
-                                        fontSize = 11.sp,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                                    )
-                                }
-                            }
-                        }
-                    }
-
-                    // Help & Complaints Desk button
-                    item {
-                        TextButton(
-                            onClick = { showComplaintDialog = true },
-                            modifier = Modifier.fillMaxWidth()
-                        ) {
-                            Icon(Icons.Default.HelpOutline, contentDescription = null, modifier = Modifier.size(16.dp))
-                            Spacer(modifier = Modifier.width(6.dp))
-                            Text("Need Assistance? File a Complaint with Bharat Mitra Admin", fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                        }
-                    }
-                }
-            }
-        }
-    }
-
-    // Direct Messages & Inbox Dialog
-    if (showUserInboxDialog) {
-        Dialog(onDismissRequest = { showUserInboxDialog = false }) {
-            Card(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .fillMaxHeight(0.7f),
-                shape = RoundedCornerShape(20.dp),
-                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
-            ) {
-                Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Text("Official Announcements & Inbox", fontWeight = FontWeight.Bold, fontSize = 16.sp)
-                        IconButton(onClick = { showUserInboxDialog = false }) {
-                            Icon(Icons.Default.Close, contentDescription = "Close")
-                        }
-                    }
-                    HorizontalDivider()
-                    LazyColumn(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                        items(adminMessages) { msg ->
-                            Card(
-                                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f))
-                            ) {
-                                Column(modifier = Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                                    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                                        Text(msg.title, fontWeight = FontWeight.Bold, fontSize = 13.sp)
-                                        Text(msg.sentAt, fontSize = 10.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                                    }
-                                    Text(msg.body, fontSize = 12.sp)
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        }
-    }
-
-    // User Complaint Dialog
-    if (showComplaintDialog) {
-        var issueType by remember { mutableStateOf("Service / Ride Issue") }
-        var complaintDetails by remember { mutableStateOf("") }
-
-        Dialog(onDismissRequest = { showComplaintDialog = false }) {
-            Card(
-                modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(20.dp),
-                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
-            ) {
-                Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                    Text("File a Complaint to Admin", fontWeight = FontWeight.Bold, fontSize = 16.sp)
-                    Text("Complaints are monitored 24/7 by the Bharat Mitra Admin Team.", fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
-
-                    OutlinedTextField(
-                        value = issueType,
-                        onValueChange = { issueType = it },
-                        label = { Text("Issue Category") },
-                        singleLine = true,
-                        modifier = Modifier.fillMaxWidth()
-                    )
-
-                    OutlinedTextField(
-                        value = complaintDetails,
-                        onValueChange = { complaintDetails = it },
-                        label = { Text("Describe the issue in detail") },
-                        minLines = 3,
-                        modifier = Modifier.fillMaxWidth()
-                    )
-
-                    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
-                        TextButton(onClick = { showComplaintDialog = false }) {
-                            Text("Cancel")
-                        }
-                        Button(
-                            onClick = {
-                                if (complaintDetails.isNotBlank()) {
-                                    viewModel.submitUserComplaint(issueType, complaintDetails)
-                                    showComplaintDialog = false
-                                } else {
-                                    Toast.makeText(context, "Please describe your issue", Toast.LENGTH_SHORT).show()
-                                }
-                            },
-                            colors = ButtonDefaults.buttonColors(containerColor = SaffronPrimary)
-                        ) {
-                            Text("Submit Complaint")
-                        }
-                    }
-                }
-            }
-        }
-    }
-
-    // Requirement 2: Check if GPS is enabled - if not, show dialog to enable GPS
-    if (showGpsEnableDialog && !isGpsEnabled) {
+    // Dialog: "Please enable GPS"
+    if (showGpsDialog) {
         AlertDialog(
-            onDismissRequest = { showGpsEnableDialog = false },
-            icon = { Icon(Icons.Default.LocationOff, contentDescription = null, tint = SaffronPrimary) },
-            title = { Text("Enable Device Location (GPS)", fontWeight = FontWeight.Bold) },
+            onDismissRequest = { showGpsDialog = false },
+            title = {
+                Text(
+                    text = "Please enable GPS",
+                    style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold)
+                )
+            },
             text = {
-                Text("High-accuracy GPS is required to detect your exact pickup point and calculate correct transparent ride fares. Please turn on location services in device settings.")
+                Text("GPS / Location is currently turned off. Please turn on device GPS to detect your real standing location.")
             },
             confirmButton = {
                 Button(
                     onClick = {
-                        showGpsEnableDialog = false
+                        showGpsDialog = false
                         try {
-                            val intent = Intent(android.provider.Settings.ACTION_LOCATION_SOURCE_SETTINGS)
-                            context.startActivity(intent)
+                            context.startActivity(Intent(Settings.ACTION_LOCATION_SOURCE_SETTINGS))
                         } catch (e: Exception) {
-                            Toast.makeText(context, "Please open device Settings -> Location", Toast.LENGTH_SHORT).show()
+                            // ignore
                         }
                     },
-                    colors = ButtonDefaults.buttonColors(containerColor = SaffronPrimary)
+                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF0D1B68))
                 ) {
-                    Text("OPEN SETTINGS")
+                    Text("Open Settings")
                 }
             },
             dismissButton = {
-                TextButton(onClick = { showGpsEnableDialog = false }) {
-                    Text("USE DEFAULT")
+                TextButton(onClick = { showGpsDialog = false }) {
+                    Text("Cancel")
                 }
             }
         )
     }
+
+    Scaffold(
+        topBar = {
+            TopAppBar(
+                title = {
+                    Text(
+                        text = "BHARAT MITRA",
+                        style = MaterialTheme.typography.titleLarge.copy(
+                            color = Color.White,
+                            fontWeight = FontWeight.Black,
+                            letterSpacing = 1.5.sp
+                        )
+                    )
+                },
+                actions = {
+                    IconButton(
+                        onClick = onNavigateToElite,
+                        modifier = Modifier.testTag("home_top_shield_btn")
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Shield,
+                            contentDescription = "Elite SOS",
+                            tint = Color(0xFFFA8520),
+                            modifier = Modifier.size(28.dp)
+                        )
+                    }
+                },
+                colors = TopAppBarDefaults.topAppBarColors(
+                    containerColor = Color(0xFF0D1B68)
+                )
+            )
+        },
+        floatingActionButton = {
+            FloatingActionButton(
+                onClick = {
+                    haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                    onNavigateToRiderCategory()
+                },
+                containerColor = Color(0xFF138808),
+                contentColor = Color.White,
+                modifier = Modifier
+                    .padding(bottom = 80.dp)
+                    .testTag("home_create_profile_fab")
+            ) {
+                Row(
+                    modifier = Modifier.padding(horizontal = 16.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Icon(Icons.Default.Add, contentDescription = null)
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text("Create Profile", fontWeight = FontWeight.Bold)
+                }
+            }
+        }
+    ) { innerPadding ->
+        LazyColumn(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(innerPadding)
+                .padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(14.dp)
+        ) {
+            // West Bengal Active Transport Hub Card (Gradient [#0D1B68, #1E3A8A])
+            item {
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(16.dp),
+                    elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .background(
+                                brush = Brush.linearGradient(
+                                    colors = listOf(Color(0xFF0D1B68), Color(0xFF1E3A8A))
+                                )
+                            )
+                            .padding(16.dp)
+                    ) {
+                        Column(
+                            horizontalAlignment = Alignment.Start,
+                            verticalArrangement = Arrangement.spacedBy(6.dp)
+                        ) {
+                            Text(
+                                text = "West Bengal Active Transport Hub",
+                                style = MaterialTheme.typography.titleMedium.copy(
+                                    color = Color.White,
+                                    fontSize = 18.sp,
+                                    fontWeight = FontWeight.Bold
+                                )
+                            )
+                            Text(
+                                text = "Zero Commission • Verified Local Drivers • Instant SOS Protection",
+                                style = MaterialTheme.typography.bodyMedium.copy(
+                                    color = Color.White.copy(alpha = 0.8f),
+                                    fontSize = 13.sp
+                                )
+                            )
+                        }
+                    }
+                }
+            }
+
+            // Pickup Radar with GPS Accuracy & Auto-detect
+            item {
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(20.dp),
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+                    elevation = CardDefaults.cardElevation(defaultElevation = 8.dp),
+                    border = BorderStroke(0.5.dp, Color(0xFFE0E0E0))
+                ) {
+                    Column(
+                        modifier = Modifier.padding(16.dp),
+                        verticalArrangement = Arrangement.spacedBy(10.dp)
+                    ) {
+                        // Shimmer loading line while GPS fetching
+                        if (isLocationLoading) {
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .height(4.dp)
+                                    .clip(RoundedCornerShape(2.dp))
+                                    .background(shimmerBrush)
+                            )
+                        }
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Box(
+                                    modifier = Modifier
+                                        .size(8.dp)
+                                        .clip(CircleShape)
+                                        .background(Color(0xFF138808))
+                                )
+                                Spacer(modifier = Modifier.width(6.dp))
+                                Text(
+                                    text = "Pickup Location Radar",
+                                    fontWeight = FontWeight.Bold,
+                                    fontSize = 13.sp,
+                                    color = Color(0xFF0D1B68)
+                                )
+                            }
+
+                            // Accuracy badge
+                            locationAccuracyMeters?.let { acc ->
+                                Surface(
+                                    color = if (acc <= 30f) Color(0xFF138808).copy(alpha = 0.15f) else Color(0xFFFA8520).copy(alpha = 0.15f),
+                                    shape = RoundedCornerShape(6.dp)
+                                ) {
+                                    Text(
+                                        text = if (acc <= 30f) "GPS: ±${acc.toInt()}m (High Precision)" else "GPS: ±${acc.toInt()}m",
+                                        fontSize = 10.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        color = if (acc <= 30f) Color(0xFF138808) else Color(0xFFFA8520),
+                                        modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                                    )
+                                }
+                            }
+                        }
+
+                        // Pickup Address Text Field + GPS Refetch Button with Spinner
+                        OutlinedTextField(
+                            value = pickupAddress,
+                            onValueChange = {
+                                pickupAddress = it
+                                viewModel.setPickupLocation(it)
+                            },
+                            label = { Text("Exact Standing Pickup Address") },
+                            leadingIcon = {
+                                Icon(Icons.Default.MyLocation, contentDescription = null, tint = Color(0xFF138808))
+                            },
+                            trailingIcon = {
+                                IconButton(
+                                    onClick = { getCurrentStandingLocation() },
+                                    modifier = Modifier.testTag("refresh_gps_btn")
+                                ) {
+                                    if (isLocationLoading) {
+                                        CircularProgressIndicator(
+                                            modifier = Modifier.size(18.dp),
+                                            strokeWidth = 2.dp,
+                                            color = Color(0xFFFA8520)
+                                        )
+                                    } else {
+                                        Icon(
+                                            Icons.Default.Refresh,
+                                            contentDescription = "Refetch Current GPS",
+                                            tint = Color(0xFFFA8520)
+                                        )
+                                    }
+                                }
+                            },
+                            singleLine = true,
+                            modifier = Modifier.fillMaxWidth().testTag("pickup_address_input"),
+                            shape = RoundedCornerShape(10.dp)
+                        )
+
+                        // Drop Location Field
+                        OutlinedTextField(
+                            value = dropAddress,
+                            onValueChange = {
+                                dropAddress = it
+                                viewModel.setDropLocation(it)
+                            },
+                            label = { Text("Where to? (Destination)") },
+                            placeholder = { Text("Enter destination address") },
+                            leadingIcon = {
+                                Icon(Icons.Default.LocationOn, contentDescription = null, tint = Color(0xFFFA8520))
+                            },
+                            singleLine = true,
+                            modifier = Modifier.fillMaxWidth().testTag("drop_address_input"),
+                            shape = RoundedCornerShape(10.dp)
+                        )
+                    }
+                }
+            }
+
+            // Real Google Map with camera moving to exact standing location
+            item {
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(200.dp)
+                        .clip(RoundedCornerShape(14.dp))
+                        .background(Color(0xFFE2E8F0))
+                ) {
+                    GoogleMap(
+                        modifier = Modifier.fillMaxSize(),
+                        cameraPositionState = cameraPositionState,
+                        properties = MapProperties(
+                            isMyLocationEnabled = hasFinePermission && userLatLng != null
+                        ),
+                        uiSettings = MapUiSettings(
+                            zoomControlsEnabled = false,
+                            myLocationButtonEnabled = true
+                        )
+                    ) {
+                        userLatLng?.let { latLng ->
+                            Marker(
+                                state = MarkerState(position = latLng),
+                                title = "Your Exact Standing Location",
+                                snippet = pickupAddress
+                            )
+                        }
+                    }
+
+                    if (userLatLng == null) {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .background(Color(0x990F172A)),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Column(
+                                horizontalAlignment = Alignment.CenterHorizontally,
+                                verticalArrangement = Arrangement.spacedBy(8.dp)
+                            ) {
+                                if (isLocationLoading) {
+                                    CircularProgressIndicator(
+                                        color = Color(0xFFFA8520),
+                                        modifier = Modifier.size(28.dp)
+                                    )
+                                    Text(
+                                        text = "Detecting real standing GPS...",
+                                        color = Color.White,
+                                        fontSize = 12.sp,
+                                        fontWeight = FontWeight.Medium
+                                    )
+                                } else {
+                                    Icon(
+                                        imageVector = Icons.Default.LocationOff,
+                                        contentDescription = null,
+                                        tint = Color(0xFFFA8520),
+                                        modifier = Modifier.size(32.dp)
+                                    )
+                                    Text(
+                                        text = "Real device GPS required\nTap refresh icon to detect",
+                                        color = Color.White,
+                                        fontSize = 12.sp,
+                                        textAlign = TextAlign.Center
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
+            // Available Fleet Header
+            item {
+                Text(
+                    text = "Available Fleet",
+                    style = MaterialTheme.typography.titleMedium.copy(
+                        fontSize = 18.sp,
+                        fontWeight = FontWeight.Bold
+                    )
+                )
+            }
+
+            // 1. Toto (E-Rickshaw)
+            item {
+                FleetVehicleCard(
+                    title = "Toto (E-Rickshaw)",
+                    subtitle = "₹10 base + ₹5/km",
+                    icon = Icons.Default.ElectricRickshaw,
+                    isSelected = selectedFleetTitle == "Toto (E-Rickshaw)",
+                    onClick = {
+                        selectedFleetTitle = "Toto (E-Rickshaw)"
+                        Toast.makeText(context, "Selected Toto (E-Rickshaw) • ₹10 base + ₹5/km", Toast.LENGTH_SHORT).show()
+                    },
+                    testTag = "fleet_item_toto"
+                )
+            }
+
+            // 2. Auto Rickshaw
+            item {
+                FleetVehicleCard(
+                    title = "Auto Rickshaw",
+                    subtitle = "₹15 base + ₹7/km",
+                    icon = Icons.Default.TwoWheeler,
+                    isSelected = selectedFleetTitle == "Auto Rickshaw",
+                    onClick = {
+                        selectedFleetTitle = "Auto Rickshaw"
+                        Toast.makeText(context, "Selected Auto Rickshaw • ₹15 base + ₹7/km", Toast.LENGTH_SHORT).show()
+                    },
+                    testTag = "fleet_item_auto"
+                )
+            }
+
+            // 3. Bike Taxi
+            item {
+                FleetVehicleCard(
+                    title = "Bike Taxi",
+                    subtitle = "₹15 base + ₹6/km",
+                    icon = Icons.Default.TwoWheeler,
+                    isSelected = selectedFleetTitle == "Bike Taxi",
+                    onClick = {
+                        selectedFleetTitle = "Bike Taxi"
+                        Toast.makeText(context, "Selected Bike Taxi • ₹15 base + ₹6/km", Toast.LENGTH_SHORT).show()
+                    },
+                    testTag = "fleet_item_bike"
+                )
+            }
+
+            // 4. Mini Cab (AC/Non-AC)
+            item {
+                FleetVehicleCard(
+                    title = "Mini Cab (AC/Non-AC)",
+                    subtitle = "₹40 base + ₹12/km",
+                    icon = Icons.Default.LocalTaxi,
+                    isSelected = selectedFleetTitle == "Mini Cab (AC/Non-AC)",
+                    onClick = {
+                        selectedFleetTitle = "Mini Cab (AC/Non-AC)"
+                        Toast.makeText(context, "Selected Mini Cab • ₹40 base + ₹12/km", Toast.LENGTH_SHORT).show()
+                    },
+                    testTag = "fleet_item_minicab"
+                )
+            }
+
+            // Instant Book Fleet Action (Premium Gradient)
+            item {
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(48.dp)
+                        .clip(RoundedCornerShape(12.dp))
+                        .background(
+                            brush = Brush.horizontalGradient(
+                                listOf(Color(0xFFFA8520), Color(0xFF138808))
+                            )
+                        )
+                        .clickable {
+                            if (dropAddress.isNotBlank()) {
+                                Toast.makeText(context, "Searching nearby verified drivers for $selectedFleetTitle from $pickupAddress...", Toast.LENGTH_LONG).show()
+                            } else {
+                                Toast.makeText(context, "Please enter your destination drop location", Toast.LENGTH_SHORT).show()
+                            }
+                        }
+                        .testTag("book_fleet_ride_btn"),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        text = "Book Ride ($selectedFleetTitle)",
+                        color = Color.White,
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 14.sp
+                    )
+                }
+            }
+
+            item {
+                Spacer(modifier = Modifier.height(16.dp))
+            }
+        }
+    }
+}
+
+@Composable
+private fun FleetVehicleCard(
+    title: String,
+    subtitle: String,
+    icon: ImageVector,
+    isSelected: Boolean,
+    onClick: () -> Unit,
+    testTag: String
+) {
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable { onClick() }
+            .testTag(testTag),
+        shape = RoundedCornerShape(20.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = if (isSelected) Color(0xFFFA8520).copy(alpha = 0.08f) else MaterialTheme.colorScheme.surface
+        ),
+        elevation = CardDefaults.cardElevation(defaultElevation = 8.dp),
+        border = BorderStroke(0.5.dp, Color(0xFFE0E0E0))
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            // Orange tinted Circle Avatar
+            Box(
+                modifier = Modifier
+                    .size(46.dp)
+                    .clip(CircleShape)
+                    .background(Color(0xFFFA8520).copy(alpha = 0.15f)),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    imageVector = icon,
+                    contentDescription = title,
+                    tint = Color(0xFFFA8520),
+                    modifier = Modifier.size(26.dp)
+                )
+            }
+
+            Spacer(modifier = Modifier.width(14.dp))
+
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = title,
+                    style = MaterialTheme.typography.titleMedium.copy(
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 16.sp
+                    )
+                )
+                Spacer(modifier = Modifier.height(2.dp))
+                Text(
+                    text = subtitle,
+                    style = MaterialTheme.typography.bodyMedium.copy(
+                        color = Color.Gray,
+                        fontSize = 13.sp
+                    )
+                )
+            }
+
+            Icon(
+                imageVector = Icons.AutoMirrored.Filled.ArrowForwardIos,
+                contentDescription = null,
+                tint = Color.Gray,
+                modifier = Modifier.size(16.dp)
+            )
+        }
+    }
+}
+
+@Composable
+fun rememberShimmerBrush(): Brush {
+    val shimmerColors = listOf(
+        Color(0xFFCBD5E1).copy(alpha = 0.6f),
+        Color.White.copy(alpha = 0.9f),
+        Color(0xFFCBD5E1).copy(alpha = 0.6f)
+    )
+    val transition = rememberInfiniteTransition(label = "shimmer_transition")
+    val translateAnim by transition.animateFloat(
+        initialValue = 0f,
+        targetValue = 1000f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(durationMillis = 1200, easing = FastOutSlowInEasing),
+            repeatMode = RepeatMode.Restart
+        ),
+        label = "shimmer_anim"
+    )
+    return Brush.linearGradient(
+        colors = shimmerColors,
+        start = androidx.compose.ui.geometry.Offset.Zero,
+        end = androidx.compose.ui.geometry.Offset(x = translateAnim, y = translateAnim)
+    )
 }

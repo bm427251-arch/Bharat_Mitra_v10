@@ -58,18 +58,12 @@ fun MapScreen(
         ) == PackageManager.PERMISSION_GRANTED
     }
 
-    // Default center: Barasat Colony More (22.7235, 88.4825)
-    val defaultLatLng = LatLng(22.7235, 88.4825)
     val userLatLng = remember(currentLocation) {
-        if (currentLocation != null) {
-            LatLng(currentLocation!!.latitude, currentLocation!!.longitude)
-        } else {
-            defaultLatLng
-        }
+        currentLocation?.let { LatLng(it.latitude, it.longitude) }
     }
 
     val cameraPositionState = rememberCameraPositionState {
-        position = CameraPosition.fromLatLngZoom(userLatLng, 15.5f)
+        position = CameraPosition.fromLatLngZoom(userLatLng ?: LatLng(0.0, 0.0), if (userLatLng != null) 16f else 2f)
     }
 
     // Requirement 5: Camera should animate to current location on load
@@ -115,11 +109,13 @@ fun MapScreen(
                     IconButton(
                         onClick = {
                             viewModel.refreshAccurateLocation()
-                            coroutineScope.launch {
-                                cameraPositionState.animate(
-                                    CameraUpdateFactory.newLatLngZoom(userLatLng, 17f),
-                                    1000
-                                )
+                            userLatLng?.let { target ->
+                                coroutineScope.launch {
+                                    cameraPositionState.animate(
+                                        CameraUpdateFactory.newLatLngZoom(target, 17f),
+                                        1000
+                                    )
+                                }
                             }
                         },
                         modifier = Modifier.testTag("map_refresh_btn")
@@ -142,11 +138,13 @@ fun MapScreen(
             FloatingActionButton(
                 onClick = {
                     viewModel.refreshAccurateLocation()
-                    coroutineScope.launch {
-                        cameraPositionState.animate(
-                            CameraUpdateFactory.newLatLngZoom(userLatLng, 17f),
-                            1000
-                        )
+                    userLatLng?.let { target ->
+                        coroutineScope.launch {
+                            cameraPositionState.animate(
+                                CameraUpdateFactory.newLatLngZoom(target, 17f),
+                                1000
+                            )
+                        }
                     }
                 },
                 containerColor = SaffronPrimary,
@@ -178,12 +176,14 @@ fun MapScreen(
                 )
             ) {
                 // User Current Pickup Marker
-                Marker(
-                    state = MarkerState(position = userLatLng),
-                    title = "Pickup: $currentAddress",
-                    snippet = "Accuracy: ±${accuracyMeters?.toInt() ?: 12}m",
-                    icon = BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_AZURE)
-                )
+                userLatLng?.let { target ->
+                    Marker(
+                        state = MarkerState(position = target),
+                        title = "Pickup: $currentAddress",
+                        snippet = "Accuracy: ±${accuracyMeters?.toInt() ?: 12}m",
+                        icon = BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_AZURE)
+                    )
+                }
 
                 // Key Landmark suggestions markers
                 Marker(
@@ -207,8 +207,25 @@ fun MapScreen(
                     icon = BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_VIOLET)
                 )
 
+                // Elite users marker Orange #FA8520, Group users Green #138808
+                userLatLng?.let { target ->
+                    Marker(
+                        state = MarkerState(position = LatLng(target.latitude + 0.0025, target.longitude + 0.0020)),
+                        title = "★ Elite VIP Driver",
+                        snippet = "Elite Member • Rating 5.0 ★ • Zero Cancellation",
+                        icon = BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_ORANGE)
+                    )
+
+                    Marker(
+                        state = MarkerState(position = LatLng(target.latitude - 0.0020, target.longitude - 0.0018)),
+                        title = "✓ Group Partner Driver",
+                        snippet = "Verified Community Driver • Zero Commission",
+                        icon = BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_GREEN)
+                    )
+                }
+
                 // Destination Drop Marker & Polyline (if drop confirmed)
-                if (isDropConfirmed && dropLatLng != null) {
+                if (isDropConfirmed && dropLatLng != null && userLatLng != null) {
                     Marker(
                         state = MarkerState(position = dropLatLng),
                         title = "Destination: $dropLocation",

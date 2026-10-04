@@ -19,6 +19,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -47,6 +49,7 @@ fun DriverCategoryScreen(
     onCreateProfile: (vehicleType: String) -> Unit
 ) {
     BackHandler { onBack() }
+    val haptic = LocalHapticFeedback.current
 
     val drivers by viewModel.verifiedDrivers.collectAsState()
 
@@ -82,8 +85,11 @@ fun DriverCategoryScreen(
             // Requirement 3: User selects vehicle type -> then FAB Green "Create Profile" appears
             if (selectedVehicle != null) {
                 FloatingActionButton(
-                    onClick = { onCreateProfile(selectedVehicle!!.name) },
-                    containerColor = Color(0xFF1DB954),
+                    onClick = {
+                        haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                        onCreateProfile(selectedVehicle!!.name)
+                    },
+                    containerColor = Color(0xFF138808),
                     contentColor = Color.White,
                     shape = RoundedCornerShape(16.dp),
                     modifier = Modifier.testTag("driver_create_profile_fab")

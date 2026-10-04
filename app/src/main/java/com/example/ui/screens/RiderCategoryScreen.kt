@@ -18,6 +18,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -36,6 +38,7 @@ fun RiderCategoryScreen(
     onCreateProfile: (vehicleType: String) -> Unit
 ) {
     BackHandler { onBack() }
+    val haptic = LocalHapticFeedback.current
 
     val riders by viewModel.riders.collectAsState()
     var selectedVehicleType by remember { mutableStateOf("BIKE") }
@@ -59,8 +62,11 @@ fun RiderCategoryScreen(
         },
         floatingActionButton = {
             FloatingActionButton(
-                onClick = { onCreateProfile(selectedVehicleType) },
-                containerColor = Color(0xFF1DB954),
+                onClick = {
+                    haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                    onCreateProfile(selectedVehicleType)
+                },
+                containerColor = Color(0xFF138808),
                 contentColor = Color.White,
                 shape = RoundedCornerShape(16.dp),
                 modifier = Modifier.testTag("rider_create_profile_fab")
@@ -108,10 +114,11 @@ fun RiderCategoryScreen(
                             .weight(1f)
                             .clickable { selectedVehicleType = "BIKE" }
                             .testTag("rider_subcard_bike"),
-                        shape = RoundedCornerShape(16.dp),
+                        shape = RoundedCornerShape(20.dp),
                         colors = CardDefaults.cardColors(
                             containerColor = if (selectedVehicleType == "BIKE") SaffronPrimary.copy(alpha = 0.12f) else MaterialTheme.colorScheme.surface
                         ),
+                        elevation = CardDefaults.cardElevation(defaultElevation = 8.dp),
                         border = BorderStroke(
                             2.dp,
                             if (selectedVehicleType == "BIKE") SaffronPrimary else MaterialTheme.colorScheme.outlineVariant
@@ -160,10 +167,11 @@ fun RiderCategoryScreen(
                             .weight(1f)
                             .clickable { selectedVehicleType = "TOTO" }
                             .testTag("rider_subcard_toto"),
-                        shape = RoundedCornerShape(16.dp),
+                        shape = RoundedCornerShape(20.dp),
                         colors = CardDefaults.cardColors(
                             containerColor = if (selectedVehicleType == "TOTO") IndianGreen.copy(alpha = 0.12f) else MaterialTheme.colorScheme.surface
                         ),
+                        elevation = CardDefaults.cardElevation(defaultElevation = 8.dp),
                         border = BorderStroke(
                             2.dp,
                             if (selectedVehicleType == "TOTO") IndianGreen else MaterialTheme.colorScheme.outlineVariant

@@ -53,6 +53,18 @@ fun DriverRegistrationScreen(
     var isDriverPhotoUploaded by remember { mutableStateOf(false) }
     var isVehiclePhotoUploaded by remember { mutableStateOf(false) }
     var isRcBookUploaded by remember { mutableStateOf(false) }
+    var showSuccessDialog by remember { mutableStateOf(false) }
+
+    if (showSuccessDialog) {
+        com.example.ui.components.PremiumSuccessDialog(
+            title = "Driver Profile Registered!",
+            message = "Congratulations! Your $vehicleType driver profile has been submitted and verified. You are now active on Bharat Mitra.",
+            onDismiss = {
+                showSuccessDialog = false
+                onBack()
+            }
+        )
+    }
 
     Scaffold(
         topBar = {
@@ -277,39 +289,46 @@ fun DriverRegistrationScreen(
             // Submit Button
             item {
                 Spacer(modifier = Modifier.height(10.dp))
-                Button(
-                    onClick = {
-                        if (name.isNotBlank() && phone.isNotBlank() && vehicleNumber.isNotBlank()) {
-                            val cat = when (vehicleType.lowercase()) {
-                                "suv", "innova" -> VehicleCategory.SUV
-                                "hatchback" -> VehicleCategory.HATCHBACK
-                                else -> VehicleCategory.SEDAN
-                            }
-                            viewModel.registerDriver(
-                                name = name,
-                                phone = phone,
-                                vehicleModel = vehicleModel,
-                                vehicleNumber = vehicleNumber,
-                                vehicleCategory = cat,
-                                dl = drivingLicence,
-                                rc = rcBookNumber.ifBlank { "RC-${vehicleNumber}" },
-                                insurance = insuranceDetails
-                            )
-                            onBack()
-                        } else {
-                            Toast.makeText(context, "Please enter Driver Name, Phone, and Vehicle Number", Toast.LENGTH_SHORT).show()
-                        }
-                    },
+                Box(
                     modifier = Modifier
                         .fillMaxWidth()
                         .height(52.dp)
+                        .clip(RoundedCornerShape(14.dp))
+                        .background(
+                            androidx.compose.ui.graphics.Brush.horizontalGradient(
+                                listOf(Color(0xFFFA8520), Color(0xFF138808))
+                            )
+                        )
+                        .clickable {
+                            if (name.isNotBlank() && phone.isNotBlank() && vehicleNumber.isNotBlank()) {
+                                val cat = when (vehicleType.lowercase()) {
+                                    "suv", "innova" -> VehicleCategory.SUV
+                                    "hatchback" -> VehicleCategory.HATCHBACK
+                                    else -> VehicleCategory.SEDAN
+                                }
+                                viewModel.registerDriver(
+                                    name = name,
+                                    phone = phone,
+                                    vehicleModel = vehicleModel,
+                                    vehicleNumber = vehicleNumber,
+                                    vehicleCategory = cat,
+                                    dl = drivingLicence,
+                                    rc = rcBookNumber.ifBlank { "RC-${vehicleNumber}" },
+                                    insurance = insuranceDetails
+                                )
+                                showSuccessDialog = true
+                            } else {
+                                Toast.makeText(context, "Please enter Driver Name, Phone, and Vehicle Number", Toast.LENGTH_SHORT).show()
+                            }
+                        }
                         .testTag("submit_driver_reg_btn"),
-                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF1DB954)),
-                    shape = RoundedCornerShape(14.dp)
+                    contentAlignment = Alignment.Center
                 ) {
-                    Icon(Icons.Default.CheckCircle, contentDescription = null)
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Text("SUBMIT DRIVER PROFILE", fontWeight = FontWeight.Bold)
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Icon(Icons.Default.CheckCircle, contentDescription = null, tint = Color.White)
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text("SUBMIT DRIVER PROFILE", fontWeight = FontWeight.Bold, color = Color.White, fontSize = 14.sp)
+                    }
                 }
                 Spacer(modifier = Modifier.height(24.dp))
             }

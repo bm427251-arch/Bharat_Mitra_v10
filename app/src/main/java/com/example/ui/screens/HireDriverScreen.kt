@@ -1,269 +1,263 @@
 package com.example.ui.screens
 
+import android.widget.Toast
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.*
+import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Person
+import androidx.compose.material.icons.filled.WorkspacePremium
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.example.model.DriverProfile
-import com.example.ui.components.DriverProfileWallDialog
-import com.example.ui.theme.AshokaBlue
-import com.example.ui.theme.IndianGreen
-import com.example.ui.theme.SaffronPrimary
 import com.example.viewmodel.MainViewModel
 
-/**
- * Requirement 4: Hire A Driver Section
- * - Profile Wall: A clean list of verified drivers (e.g., 6 drivers).
- * - Details per driver: 8-hour Fixed Fee (₹800) + Overtime Fee (₹100/hr) + Documents Verified Badge.
- */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun HireDriverScreen(
     viewModel: MainViewModel,
-    onBack: () -> Unit
+    onBack: () -> Unit = {},
+    onNavigateToDriverCategory: () -> Unit = {}
 ) {
-    val drivers by viewModel.verifiedDrivers.collectAsState()
-    val profileWallDriver by viewModel.profileWallDriver.collectAsState()
+    val context = LocalContext.current
+    val haptic = LocalHapticFeedback.current
 
     Scaffold(
         topBar = {
             TopAppBar(
                 title = {
-                    Column {
-                        Text("Hire A Verified Driver", fontWeight = FontWeight.Bold, fontSize = 18.sp)
-                        Text("Chauffeurs for private, commercial & outstation trips", fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                    }
+                    Text(
+                        text = "Hire Driver",
+                        style = MaterialTheme.typography.titleLarge.copy(
+                            fontWeight = FontWeight.Bold,
+                            color = Color.White
+                        )
+                    )
                 },
-                navigationIcon = {
-                    IconButton(onClick = onBack, modifier = Modifier.testTag("hire_driver_back_btn")) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
-                    }
-                },
-                colors = TopAppBarDefaults.topAppBarColors(containerColor = MaterialTheme.colorScheme.surface)
+                colors = TopAppBarDefaults.topAppBarColors(
+                    containerColor = Color(0xFF0D1B68)
+                )
             )
+        },
+        floatingActionButton = {
+            FloatingActionButton(
+                onClick = {
+                    haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                    onNavigateToDriverCategory()
+                },
+                containerColor = Color(0xFF138808),
+                contentColor = Color.White,
+                modifier = Modifier
+                    .padding(bottom = 80.dp)
+                    .testTag("driver_create_profile_fab")
+            ) {
+                Row(
+                    modifier = Modifier.padding(horizontal = 16.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Icon(Icons.Default.Add, contentDescription = null)
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text("Driver - Create Profile", fontWeight = FontWeight.Bold)
+                }
+            }
         }
     ) { innerPadding ->
-        Column(
+        LazyColumn(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(innerPadding)
-                .padding(horizontal = 16.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp)
+                .padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(14.dp)
         ) {
-            // Standard Tariff Overview Header
-            Card(
-                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.5f)),
-                shape = RoundedCornerShape(14.dp)
-            ) {
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(14.dp),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Column {
-                        Text(
-                            text = "Standard Uniform Tariff",
-                            style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold, color = AshokaBlue)
-                        )
-                        Text(
-                            text = "Fixed ₹800 for 8 Hours • ₹100/hr Overtime",
-                            style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Bold)
-                        )
-                    }
-                    Surface(
-                        color = IndianGreen.copy(alpha = 0.15f),
-                        shape = RoundedCornerShape(8.dp)
-                    ) {
-                        Text(
-                            text = "100% Verified",
-                            fontSize = 11.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = IndianGreen,
-                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
-                        )
-                    }
-                }
+            item {
+                DriverHireCard(
+                    name = "Subhasish Mondal",
+                    rating = "4.9 ★",
+                    details = "12 yrs experience • Manual/Auto • Police Verified",
+                    zone = "Barasat / Salt Lake",
+                    onHire = {
+                        Toast.makeText(context, "Driver hired: Subhasish Mondal", Toast.LENGTH_SHORT).show()
+                    },
+                    testTag = "hire_subhasish_btn"
+                )
             }
 
-            Text(
-                text = "Available Verified Drivers (${drivers.size})",
-                style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold)
-            )
+            item {
+                DriverHireCard(
+                    name = "Debashis Roy",
+                    rating = "4.8 ★",
+                    details = "8 yrs experience • Night Specialist • Outstation Ready",
+                    zone = "New Town / Kolkata",
+                    onHire = {
+                        Toast.makeText(context, "Driver hired: Debashis Roy", Toast.LENGTH_SHORT).show()
+                    },
+                    testTag = "hire_debashis_btn"
+                )
+            }
 
-            LazyColumn(
-                modifier = Modifier.fillMaxSize(),
-                verticalArrangement = Arrangement.spacedBy(12.dp)
-            ) {
-                items(drivers) { driver ->
-                    DriverCardItem(
-                        driver = driver,
-                        onViewProfile = {
-                            viewModel.openDriverProfileWall(driver)
-                        }
-                    )
-                }
-                item {
-                    Spacer(modifier = Modifier.height(16.dp))
-                }
+            item {
+                DriverHireCard(
+                    name = "Rajesh Das",
+                    rating = "5.0 ★",
+                    details = "15 yrs experience • Luxury Cars / SUVs",
+                    zone = "Howrah / Airport Circle",
+                    onHire = {
+                        Toast.makeText(context, "Driver hired: Rajesh Das", Toast.LENGTH_SHORT).show()
+                    },
+                    testTag = "hire_rajesh_btn"
+                )
             }
         }
-    }
-
-    // Driver Profile Wall Dialog
-    if (profileWallDriver != null) {
-        DriverProfileWallDialog(
-            driver = profileWallDriver!!,
-            onDismiss = { viewModel.closeDriverProfileWall() },
-            onBookNow = {
-                viewModel.closeDriverProfileWall()
-                viewModel.bookCurrentRide()
-            }
-        )
     }
 }
 
 @Composable
-private fun DriverCardItem(
-    driver: DriverProfile,
-    onViewProfile: () -> Unit
+private fun DriverHireCard(
+    name: String,
+    rating: String,
+    details: String,
+    zone: String,
+    onHire: () -> Unit,
+    testTag: String
 ) {
+    val isEliteDriver = rating.contains("4.9") || rating.contains("5.0")
+
     Card(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clickable { onViewProfile() }
-            .testTag("driver_card_${driver.id}"),
-        shape = RoundedCornerShape(16.dp),
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(20.dp),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.5.dp)
+        elevation = CardDefaults.cardElevation(defaultElevation = 8.dp),
+        border = BorderStroke(0.5.dp, Color(0xFFE0E0E0))
     ) {
-        Column(
-            modifier = Modifier.padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(10.dp)
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp),
+            verticalAlignment = Alignment.CenterVertically
         ) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically
+            // Driver photo avatar with Verified badge at bottom-end
+            Box(
+                modifier = Modifier.size(54.dp)
             ) {
-                // Avatar
                 Box(
                     modifier = Modifier
-                        .size(54.dp)
+                        .size(48.dp)
                         .clip(CircleShape)
-                        .background(MaterialTheme.colorScheme.primaryContainer),
+                        .background(Color(0xFF0D1B68)),
                     contentAlignment = Alignment.Center
                 ) {
-                    Text(
-                        text = driver.avatarInitials,
-                        fontWeight = FontWeight.ExtraBold,
-                        fontSize = 18.sp,
-                        color = MaterialTheme.colorScheme.onPrimaryContainer
+                    Icon(
+                        imageVector = Icons.Default.Person,
+                        contentDescription = null,
+                        tint = Color.White,
+                        modifier = Modifier.size(28.dp)
                     )
                 }
 
-                Spacer(modifier = Modifier.width(12.dp))
-
-                Column(modifier = Modifier.weight(1f)) {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Text(
-                            text = driver.name,
-                            style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold)
-                        )
-                        Spacer(modifier = Modifier.width(6.dp))
-                        Icon(
-                            Icons.Default.Verified,
-                            contentDescription = "Verified",
-                            tint = IndianGreen,
-                            modifier = Modifier.size(16.dp)
-                        )
-                    }
-
-                    Text(
-                        text = "${driver.experienceYears} Years Exp • ${driver.vehicleModel}",
-                        fontSize = 12.sp,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-
-                    // Rating
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        modifier = Modifier.padding(top = 2.dp)
-                    ) {
-                        Icon(Icons.Default.Star, contentDescription = null, tint = Color(0xFFD97706), modifier = Modifier.size(14.dp))
-                        Spacer(modifier = Modifier.width(3.dp))
-                        Text("${driver.rating}", fontSize = 12.sp, fontWeight = FontWeight.Bold)
-                        Spacer(modifier = Modifier.width(6.dp))
-                        Text("(${driver.totalTrips} trips)", fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                    }
-                }
-
-                // Documents Verified Badge
-                Surface(
-                    color = IndianGreen.copy(alpha = 0.12f),
-                    shape = RoundedCornerShape(8.dp),
-                    border = androidx.compose.foundation.BorderStroke(1.dp, IndianGreen.copy(alpha = 0.4f))
+                // Trust badge: small box bottom-end with Green background #138808, text "✓ Verified" white 10sp
+                Box(
+                    modifier = Modifier
+                        .align(Alignment.BottomEnd)
+                        .clip(RoundedCornerShape(4.dp))
+                        .background(Color(0xFF138808))
+                        .padding(horizontal = 4.dp, vertical = 1.dp)
                 ) {
-                    Column(
-                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
-                        horizontalAlignment = Alignment.CenterHorizontally
-                    ) {
-                        Icon(Icons.Default.Security, contentDescription = null, tint = IndianGreen, modifier = Modifier.size(14.dp))
-                        Text(
-                            text = "DOCS VERIFIED",
-                            fontSize = 9.sp,
-                            fontWeight = FontWeight.ExtraBold,
-                            color = IndianGreen
-                        )
-                    }
+                    Text(
+                        text = "✓ Verified",
+                        color = Color.White,
+                        fontSize = 10.sp,
+                        fontWeight = FontWeight.Bold
+                    )
                 }
             }
 
-            HorizontalDivider(color = MaterialTheme.colorScheme.surfaceVariant)
+            Spacer(modifier = Modifier.width(14.dp))
 
-            // Pricing & Badges Row (MANDATORY: 8-hour Fixed Fee ₹800 + Overtime Fee ₹100/hr)
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                    Column {
-                        Text("8-Hour Fixed Fee", fontSize = 10.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                        Text("₹${driver.fixed8HrFee}", fontSize = 15.sp, fontWeight = FontWeight.ExtraBold, color = SaffronPrimary)
-                    }
-                    Column {
-                        Text("Overtime Rate", fontSize = 10.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                        Text("₹${driver.overtimePerHourRate}/hr", fontSize = 15.sp, fontWeight = FontWeight.Bold, color = AshokaBlue)
-                    }
-                }
-
-                Button(
-                    onClick = onViewProfile,
-                    modifier = Modifier
-                        .height(38.dp)
-                        .testTag("driver_view_profile_${driver.id}"),
-                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primaryContainer),
-                    contentPadding = PaddingValues(horizontal = 12.dp)
+            Column(modifier = Modifier.weight(1f)) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Text("View Profile Wall", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onPrimaryContainer)
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Text(
+                            text = name,
+                            style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold)
+                        )
+                        if (isEliteDriver) {
+                            Spacer(modifier = Modifier.width(4.dp))
+                            // Elite crown icon near 4.9 rated drivers
+                            Icon(
+                                imageVector = Icons.Default.WorkspacePremium,
+                                contentDescription = "Elite Driver Crown",
+                                tint = Color(0xFFFA8520),
+                                modifier = Modifier.size(18.dp)
+                            )
+                        }
+                    }
+
+                    Text(
+                        text = rating,
+                        style = MaterialTheme.typography.bodyMedium.copy(
+                            color = Color(0xFFFA8520),
+                            fontWeight = FontWeight.Bold
+                        )
+                    )
                 }
+
+                Spacer(modifier = Modifier.height(4.dp))
+
+                Text(
+                    text = details,
+                    style = MaterialTheme.typography.bodySmall.copy(fontSize = 12.sp)
+                )
+
+                Spacer(modifier = Modifier.height(2.dp))
+
+                Text(
+                    text = "Zone: $zone",
+                    style = MaterialTheme.typography.bodySmall.copy(fontSize = 12.sp, color = Color.Gray)
+                )
+            }
+
+            Spacer(modifier = Modifier.width(10.dp))
+
+            // Premium gradient button
+            Box(
+                modifier = Modifier
+                    .clip(RoundedCornerShape(12.dp))
+                    .background(
+                        brush = Brush.horizontalGradient(
+                            listOf(Color(0xFFFA8520), Color(0xFF138808))
+                        )
+                    )
+                    .clickable { onHire() }
+                    .padding(horizontal = 16.dp, vertical = 10.dp)
+                    .testTag(testTag),
+                contentAlignment = Alignment.Center
+            ) {
+                Text(
+                    text = "Hire",
+                    color = Color.White,
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 14.sp
+                )
             }
         }
     }

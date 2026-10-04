@@ -1,305 +1,226 @@
 package com.example.ui.screens
 
+import android.widget.Toast
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.LazyRow
-import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.*
+import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.VerifiedUser
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.example.model.ScreenState
-import com.example.model.VehicleCategory
-import com.example.model.VehicleVariant
-import com.example.ui.components.DriverProfileWallDialog
-import com.example.ui.theme.AshokaBlue
-import com.example.ui.theme.IndianGreen
-import com.example.ui.theme.SaffronPrimary
 import com.example.viewmodel.MainViewModel
 
-/**
- * Requirement 3: Rent A Car Section
- * - Top Filter Tabs: Toto, Auto, Hatchback, Sedan, SUV.
- * - Sub-options: Each vehicle category must have 3 options: Non-AC, AC, and Premium.
- * - Profile Wall: Clicking any vehicle instantly opens a Driver Profile Wall displaying
- *   the driver's Photo, RC, Insurance, and Rating.
- */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun RentACarScreen(
     viewModel: MainViewModel,
-    onBack: () -> Unit
+    onBack: () -> Unit = {},
+    onNavigateToRentRegistration: () -> Unit = {}
 ) {
-    val selectedCategory by viewModel.selectedRentCategory.collectAsState()
-    val selectedVariant by viewModel.selectedRentVariant.collectAsState()
-    val rentalVehicles by viewModel.rentalVehicles.collectAsState()
-    val profileWallDriver by viewModel.profileWallDriver.collectAsState()
-    val profileWallRentalInfo by viewModel.profileWallRentalInfo.collectAsState()
-
-    // Filter vehicles by category and variant
-    val filteredVehicles = remember(selectedCategory, selectedVariant, rentalVehicles) {
-        rentalVehicles.filter {
-            it.category == selectedCategory && it.variant == selectedVariant
-        }
-    }
+    val context = LocalContext.current
+    val haptic = LocalHapticFeedback.current
 
     Scaffold(
         topBar = {
             TopAppBar(
                 title = {
-                    Column {
-                        Text("Rent A Car & Fleet", fontWeight = FontWeight.Bold, fontSize = 18.sp)
-                        Text("Daily & hourly rental with verified driver", fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                    }
+                    Text(
+                        text = "Rent A Car",
+                        style = MaterialTheme.typography.titleLarge.copy(
+                            fontWeight = FontWeight.Bold,
+                            color = Color.White
+                        )
+                    )
                 },
-                navigationIcon = {
-                    IconButton(onClick = onBack, modifier = Modifier.testTag("rent_car_back_btn")) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
-                    }
-                },
-                colors = TopAppBarDefaults.topAppBarColors(containerColor = MaterialTheme.colorScheme.surface)
+                colors = TopAppBarDefaults.topAppBarColors(
+                    containerColor = Color(0xFF0D1B68)
+                )
             )
+        },
+        floatingActionButton = {
+            FloatingActionButton(
+                onClick = {
+                    haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                    onNavigateToRentRegistration()
+                },
+                containerColor = Color(0xFF138808),
+                contentColor = Color.White,
+                modifier = Modifier
+                    .padding(bottom = 80.dp)
+                    .testTag("rent_create_profile_fab")
+            ) {
+                Row(
+                    modifier = Modifier.padding(horizontal = 16.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Icon(Icons.Default.Add, contentDescription = null)
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text("Rent Owner - Create Profile", fontWeight = FontWeight.Bold)
+                }
+            }
         }
     ) { innerPadding ->
-        Column(
+        LazyColumn(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(innerPadding)
-                .padding(horizontal = 16.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp)
+                .padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(14.dp)
         ) {
-            // Category Tabs (Toto, Auto, Hatchback, Sedan, SUV)
-            Text(
-                text = "Vehicle Category",
-                style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold)
-            )
-            LazyRow(
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                items(VehicleCategory.values()) { category ->
-                    val isSelected = selectedCategory == category
-                    FilterChip(
-                        selected = isSelected,
-                        onClick = { viewModel.selectRentCategory(category) },
-                        label = {
-                            Text(
-                                text = when (category) {
-                                    VehicleCategory.TOTO -> "🛺 Toto"
-                                    VehicleCategory.AUTO -> "🛺 Auto"
-                                    VehicleCategory.HATCHBACK -> "🚗 Hatchback"
-                                    VehicleCategory.SEDAN -> "🚙 Sedan"
-                                    VehicleCategory.SUV -> "🚐 SUV"
-                                },
-                                fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal
-                            )
-                        },
-                        colors = FilterChipDefaults.filterChipColors(
-                            selectedContainerColor = SaffronPrimary,
-                            selectedLabelColor = Color.White
-                        ),
-                        modifier = Modifier.testTag("category_chip_${category.name}")
-                    )
-                }
+            item {
+                CarRentalCard(
+                    title = "Swift Dzire (Sedan)",
+                    specs = "₹1,800/day • Unlimited Kms • AC",
+                    desc = "Available in Barasat / Kolkata",
+                    onBook = {
+                        Toast.makeText(context, "Booking requested for Swift Dzire", Toast.LENGTH_SHORT).show()
+                    },
+                    testTag = "book_dzire_btn"
+                )
             }
 
-            // Sub-options: Non-AC, AC, Premium
-            Text(
-                text = "Comfort Tier (Sub-options)",
-                style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold)
-            )
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                VehicleVariant.values().forEach { variant ->
-                    val isSelected = selectedVariant == variant
-                    Surface(
-                        modifier = Modifier
-                            .weight(1f)
-                            .clip(RoundedCornerShape(10.dp))
-                            .clickable { viewModel.selectRentVariant(variant) }
-                            .testTag("variant_tab_${variant.name}"),
-                        color = if (isSelected) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceVariant,
-                        border = if (isSelected) androidx.compose.foundation.BorderStroke(1.5.dp, SaffronPrimary) else null
-                    ) {
-                        Column(
-                            modifier = Modifier.padding(vertical = 10.dp, horizontal = 8.dp),
-                            horizontalAlignment = Alignment.CenterHorizontally
-                        ) {
-                            Text(
-                                text = when (variant) {
-                                    VehicleVariant.NON_AC -> "🌿 Non-AC"
-                                    VehicleVariant.AC -> "❄️ AC"
-                                    VehicleVariant.PREMIUM -> "👑 Premium"
-                                },
-                                fontSize = 12.sp,
-                                fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
-                                color = if (isSelected) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                        }
-                    }
-                }
+            item {
+                CarRentalCard(
+                    title = "Innova Crysta (7-Seater)",
+                    specs = "₹3,200/day • Outstation • AC",
+                    desc = "Ideal for North Bengal / Digha Trips",
+                    onBook = {
+                        Toast.makeText(context, "Booking requested for Innova Crysta", Toast.LENGTH_SHORT).show()
+                    },
+                    testTag = "book_innova_btn"
+                )
             }
 
-            HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp))
-
-            // Vehicle Listing
-            Text(
-                text = "Available ${selectedCategory.displayName} (${selectedVariant.displayName})",
-                style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold)
-            )
-
-            if (filteredVehicles.isEmpty()) {
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .weight(1f),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Text("No fleets currently available in this combination. Please choose another tier.", color = MaterialTheme.colorScheme.onSurfaceVariant)
-                }
-            } else {
-                LazyColumn(
-                    modifier = Modifier.weight(1f),
-                    verticalArrangement = Arrangement.spacedBy(12.dp)
-                ) {
-                    items(filteredVehicles) { vehicle ->
-                        Card(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .clickable {
-                                    viewModel.openDriverProfileWall(
-                                        vehicle.driver,
-                                        rentalTitle = "${vehicle.title} (${selectedVariant.displayName})",
-                                        rentalPrice = "₹${vehicle.ratePerHour}/hr • ₹${vehicle.ratePerDay}/day"
-                                    )
-                                }
-                                .testTag("rental_vehicle_card_${vehicle.id}"),
-                            shape = RoundedCornerShape(16.dp),
-                            elevation = CardDefaults.cardElevation(defaultElevation = 3.dp),
-                            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
-                        ) {
-                            Column(
-                                modifier = Modifier.padding(16.dp),
-                                verticalArrangement = Arrangement.spacedBy(10.dp)
-                            ) {
-                                Row(
-                                    modifier = Modifier.fillMaxWidth(),
-                                    horizontalArrangement = Arrangement.SpaceBetween,
-                                    verticalAlignment = Alignment.CenterVertically
-                                ) {
-                                    Column {
-                                        Text(
-                                            text = vehicle.title,
-                                            style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold)
-                                        )
-                                        Text(
-                                            text = "${vehicle.seats} Seats • Fuel: ${vehicle.fuelType} • ${vehicle.category.displayName}",
-                                            fontSize = 12.sp,
-                                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                                        )
-                                    }
-
-                                    Column(horizontalAlignment = Alignment.End) {
-                                        Text(
-                                            text = "₹${vehicle.ratePerHour}/hr",
-                                            style = MaterialTheme.typography.titleMedium.copy(
-                                                fontWeight = FontWeight.ExtraBold,
-                                                color = SaffronPrimary
-                                            )
-                                        )
-                                        Text(
-                                            text = "₹${vehicle.ratePerDay}/day",
-                                            fontSize = 11.sp,
-                                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                                        )
-                                    }
-                                }
-
-                                HorizontalDivider(color = MaterialTheme.colorScheme.surfaceVariant)
-
-                                // Driver Summary Row (Instant click triggers Profile Wall)
-                                Row(
-                                    modifier = Modifier.fillMaxWidth(),
-                                    verticalAlignment = Alignment.CenterVertically
-                                ) {
-                                    Box(
-                                        modifier = Modifier
-                                            .size(42.dp)
-                                            .clip(CircleShape)
-                                            .background(MaterialTheme.colorScheme.primaryContainer),
-                                        contentAlignment = Alignment.Center
-                                    ) {
-                                        Text(
-                                            text = vehicle.driver.avatarInitials,
-                                            fontWeight = FontWeight.Bold,
-                                            color = MaterialTheme.colorScheme.onPrimaryContainer
-                                        )
-                                    }
-                                    Spacer(modifier = Modifier.width(10.dp))
-                                    Column(modifier = Modifier.weight(1f)) {
-                                        Row(verticalAlignment = Alignment.CenterVertically) {
-                                            Text(
-                                                text = vehicle.driver.name,
-                                                fontWeight = FontWeight.Bold,
-                                                fontSize = 13.sp
-                                            )
-                                            Spacer(modifier = Modifier.width(4.dp))
-                                            Icon(Icons.Default.CheckCircle, contentDescription = null, tint = IndianGreen, modifier = Modifier.size(14.dp))
-                                        }
-                                        Text(
-                                            text = "RC: ${vehicle.driver.rcNumber} • Rating: ${vehicle.driver.rating} ★",
-                                            fontSize = 11.sp,
-                                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                                        )
-                                    }
-
-                                    Surface(
-                                        color = AshokaBlue.copy(alpha = 0.1f),
-                                        shape = RoundedCornerShape(8.dp)
-                                    ) {
-                                        Row(
-                                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
-                                            verticalAlignment = Alignment.CenterVertically
-                                        ) {
-                                            Text("Profile Wall", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = AshokaBlue)
-                                            Icon(Icons.Default.ChevronRight, contentDescription = null, tint = AshokaBlue, modifier = Modifier.size(14.dp))
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
+            item {
+                CarRentalCard(
+                    title = "Mahindra Thar 4x4",
+                    specs = "₹4,500/day • Adventure Special",
+                    desc = "Top Condition • Insured",
+                    onBook = {
+                        Toast.makeText(context, "Booking requested for Mahindra Thar", Toast.LENGTH_SHORT).show()
+                    },
+                    testTag = "book_thar_btn"
+                )
             }
         }
     }
+}
 
-    // Driver Profile Wall Dialog
-    if (profileWallDriver != null) {
-        DriverProfileWallDialog(
-            driver = profileWallDriver!!,
-            rentalTitle = profileWallRentalInfo?.first,
-            rentalPriceInfo = profileWallRentalInfo?.second,
-            onDismiss = { viewModel.closeDriverProfileWall() },
-            onBookNow = {
-                viewModel.closeDriverProfileWall()
-                viewModel.bookCurrentRide()
+@Composable
+private fun CarRentalCard(
+    title: String,
+    specs: String,
+    desc: String,
+    onBook: () -> Unit,
+    testTag: String
+) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(20.dp),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+        elevation = CardDefaults.cardElevation(defaultElevation = 8.dp),
+        border = BorderStroke(0.5.dp, Color(0xFFE0E0E0))
+    ) {
+        Column(
+            modifier = Modifier.padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = title,
+                    style = MaterialTheme.typography.titleMedium.copy(
+                        fontSize = 18.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = Color(0xFF0D1B68)
+                    )
+                )
+
+                // Trust badge: "Aadhaar Verified" green chip
+                Surface(
+                    color = Color(0xFF138808).copy(alpha = 0.12f),
+                    shape = RoundedCornerShape(6.dp),
+                    border = BorderStroke(0.5.dp, Color(0xFF138808))
+                ) {
+                    Row(
+                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.VerifiedUser,
+                            contentDescription = null,
+                            tint = Color(0xFF138808),
+                            modifier = Modifier.size(12.dp)
+                        )
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Text(
+                            text = "Aadhaar Verified",
+                            fontSize = 10.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = Color(0xFF138808)
+                        )
+                    }
+                }
             }
-        )
+
+            Text(
+                text = specs,
+                style = MaterialTheme.typography.bodyMedium.copy(
+                    fontWeight = FontWeight.SemiBold,
+                    color = Color(0xFFFA8520)
+                )
+            )
+
+            Text(
+                text = desc,
+                style = MaterialTheme.typography.bodySmall.copy(
+                    color = Color.Gray
+                )
+            )
+
+            Spacer(modifier = Modifier.height(4.dp))
+
+            // Premium gradient button
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(44.dp)
+                    .clip(RoundedCornerShape(12.dp))
+                    .background(
+                        brush = Brush.horizontalGradient(
+                            listOf(Color(0xFFFA8520), Color(0xFF138808))
+                        )
+                    )
+                    .clickable { onBook() }
+                    .testTag(testTag),
+                contentAlignment = Alignment.Center
+            ) {
+                Text(
+                    text = "Book Vehicle Now",
+                    color = Color.White,
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 14.sp
+                )
+            }
+        }
     }
 }

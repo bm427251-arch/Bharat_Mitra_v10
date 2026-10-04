@@ -49,8 +49,20 @@ fun ProfileCreateScreen(
     var vehicleNumber by remember { mutableStateOf("") }
     var address by remember { mutableStateOf("Colony More, Barasat") }
     var isPhotoAttached by remember { mutableStateOf(false) }
+    var showSuccessDialog by remember { mutableStateOf(false) }
 
     val isToto = vehicleType.equals("TOTO", ignoreCase = true)
+
+    if (showSuccessDialog) {
+        com.example.ui.components.PremiumSuccessDialog(
+            title = "Rider Profile Registered!",
+            message = "Your $vehicleType profile has been successfully registered on Bharat Mitra. Verified drivers enjoy zero commission on all trips.",
+            onDismiss = {
+                showSuccessDialog = false
+                onBack()
+            }
+        )
+    }
 
     Scaffold(
         topBar = {
@@ -251,32 +263,39 @@ fun ProfileCreateScreen(
             // Submit Button
             item {
                 Spacer(modifier = Modifier.height(10.dp))
-                Button(
-                    onClick = {
-                        if (name.isNotBlank() && phone.isNotBlank() && vehicleNumber.isNotBlank()) {
-                            viewModel.registerRider(
-                                name = name,
-                                phone = phone,
-                                vehicleType = vehicleType,
-                                vehicleNumber = vehicleNumber,
-                                address = address,
-                                dl = drivingLicence
-                            )
-                            onBack()
-                        } else {
-                            Toast.makeText(context, "Please fill in Name, Phone, and Vehicle Number", Toast.LENGTH_SHORT).show()
-                        }
-                    },
+                Box(
                     modifier = Modifier
                         .fillMaxWidth()
                         .height(52.dp)
+                        .clip(RoundedCornerShape(14.dp))
+                        .background(
+                            androidx.compose.ui.graphics.Brush.horizontalGradient(
+                                listOf(Color(0xFFFA8520), Color(0xFF138808))
+                            )
+                        )
+                        .clickable {
+                            if (name.isNotBlank() && phone.isNotBlank() && vehicleNumber.isNotBlank()) {
+                                viewModel.registerRider(
+                                    name = name,
+                                    phone = phone,
+                                    vehicleType = vehicleType,
+                                    vehicleNumber = vehicleNumber,
+                                    address = address,
+                                    dl = drivingLicence
+                                )
+                                showSuccessDialog = true
+                            } else {
+                                Toast.makeText(context, "Please fill in Name, Phone, and Vehicle Number", Toast.LENGTH_SHORT).show()
+                            }
+                        }
                         .testTag("submit_rider_profile_btn"),
-                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF1DB954)),
-                    shape = RoundedCornerShape(14.dp)
+                    contentAlignment = Alignment.Center
                 ) {
-                    Icon(Icons.Default.CheckCircle, contentDescription = null)
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Text("SAVE & SUBMIT RIDER PROFILE", fontWeight = FontWeight.Bold)
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Icon(Icons.Default.CheckCircle, contentDescription = null, tint = Color.White)
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text("SAVE & SUBMIT RIDER PROFILE", fontWeight = FontWeight.Bold, color = Color.White, fontSize = 14.sp)
+                    }
                 }
                 Spacer(modifier = Modifier.height(24.dp))
             }

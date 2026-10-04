@@ -44,7 +44,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     val isLocationLoading: StateFlow<Boolean> = appLocationManager.isLocationLoading
     val isGpsEnabled: StateFlow<Boolean> = appLocationManager.isGpsEnabled
 
-    private val _pickupLocation = MutableStateFlow("Your Location: Colony More, Jessore Road, Barasat, WB 700124")
+    private val _pickupLocation = MutableStateFlow("Detecting exact GPS location...")
     val pickupLocation: StateFlow<String> = _pickupLocation.asStateFlow()
 
     private val _dynamicSuggestions = MutableStateFlow(SampleData.locationSuggestions)
@@ -357,6 +357,10 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     fun autoDetectPickupLocation() {
         refreshAccurateLocation()
         Toast.makeText(getApplication(), "Recalibrating high-accuracy GPS...", Toast.LENGTH_SHORT).show()
+    }
+
+    fun setPickupLocation(pickup: String) {
+        _pickupLocation.value = pickup
     }
 
     fun setDropLocation(drop: String) {
