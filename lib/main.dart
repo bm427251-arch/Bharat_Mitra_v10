@@ -1,5 +1,6 @@
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
+import 'widgets/main_bottom_nav_fixed.dart';
 
 void main() {
   runApp(const BharatMitraApp());
@@ -21,41 +22,7 @@ class BharatMitraApp extends StatelessWidget {
         ),
         useMaterial3: true,
       ),
-      home: const SplashScreen(),
-    );
-  }
-}
-
-class SplashScreen extends StatefulWidget {
-  const SplashScreen({Key? key}) : super(key: key);
-
-  @override
-  State<SplashScreen> createState() => _SplashScreenState();
-}
-
-class _SplashScreenState extends State<SplashScreen> {
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: const Color(0xFF0D1B68),
-      body: Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            const BharatMitraLogoWidget(width: 280, height: 350),
-            const SizedBox(height: 24),
-            const Text(
-              'Together We Protect, Serve & Travel',
-              style: TextStyle(
-                color: Color(0xFF94A3B8),
-                fontSize: 14,
-                fontWeight: FontWeight.w500,
-                letterSpacing: 0.5,
-              ),
-            ),
-          ],
-        ),
-      ),
+      home: const MainBottomNavFixed(),
     );
   }
 }

@@ -71,7 +71,64 @@ class MainActivity : ComponentActivity() {
                                     viewModel = viewModel,
                                     onNavigateToRentCar = { viewModel.navigateTo(ScreenState.RENT_A_CAR) },
                                     onNavigateToHireDriver = { viewModel.navigateTo(ScreenState.HIRE_DRIVER) },
-                                    onNavigateToElite = { viewModel.navigateTo(ScreenState.ELITE_SERVICE) }
+                                    onNavigateToElite = { viewModel.navigateTo(ScreenState.ELITE_SERVICE) },
+                                    onNavigateToRiderCategory = { viewModel.navigateTo(ScreenState.RIDER_CATEGORY) },
+                                    onNavigateToDriverCategory = { viewModel.navigateTo(ScreenState.DRIVER_CATEGORY) },
+                                    onNavigateToRentCategory = { viewModel.navigateTo(ScreenState.RENT_CATEGORY) }
+                                )
+                            }
+                            ScreenState.RIDER_CATEGORY -> {
+                                RiderCategoryScreen(
+                                    viewModel = viewModel,
+                                    onBack = { viewModel.navigateTo(ScreenState.HOME) },
+                                    onCreateProfile = { vehicleType ->
+                                        viewModel.setSelectedCategory("RIDER", vehicleType)
+                                        viewModel.navigateTo(ScreenState.PROFILE_CREATE)
+                                    }
+                                )
+                            }
+                            ScreenState.DRIVER_CATEGORY -> {
+                                DriverCategoryScreen(
+                                    viewModel = viewModel,
+                                    onBack = { viewModel.navigateTo(ScreenState.HOME) },
+                                    onCreateProfile = { vehicleType ->
+                                        viewModel.setSelectedCategory("DRIVER", vehicleType)
+                                        viewModel.navigateTo(ScreenState.DRIVER_REGISTRATION)
+                                    }
+                                )
+                            }
+                            ScreenState.RENT_CATEGORY -> {
+                                RentACarCategoryScreen(
+                                    viewModel = viewModel,
+                                    onBack = { viewModel.navigateTo(ScreenState.HOME) },
+                                    onCreateProfile = {
+                                        viewModel.setSelectedCategory("RENT_A_CAR", "")
+                                        viewModel.navigateTo(ScreenState.RENT_REGISTRATION)
+                                    }
+                                )
+                            }
+                            ScreenState.PROFILE_CREATE -> {
+                                val selectedRole by viewModel.selectedRole.collectAsState()
+                                val selectedVehicle by viewModel.selectedVehicleType.collectAsState()
+                                ProfileCreateScreen(
+                                    viewModel = viewModel,
+                                    role = selectedRole,
+                                    vehicleType = selectedVehicle,
+                                    onBack = { viewModel.navigateTo(ScreenState.RIDER_CATEGORY) }
+                                )
+                            }
+                            ScreenState.DRIVER_REGISTRATION -> {
+                                val selectedVehicle by viewModel.selectedVehicleType.collectAsState()
+                                DriverRegistrationScreen(
+                                    viewModel = viewModel,
+                                    vehicleType = selectedVehicle,
+                                    onBack = { viewModel.navigateTo(ScreenState.DRIVER_CATEGORY) }
+                                )
+                            }
+                            ScreenState.RENT_REGISTRATION -> {
+                                RentACarRegistrationScreen(
+                                    viewModel = viewModel,
+                                    onBack = { viewModel.navigateTo(ScreenState.RENT_CATEGORY) }
                                 )
                             }
                             ScreenState.RENT_A_CAR -> {
@@ -102,6 +159,12 @@ class MainActivity : ComponentActivity() {
                                 ActiveRideTrackingScreen(
                                     viewModel = viewModel,
                                     onBackToHome = { viewModel.navigateTo(ScreenState.HOME) }
+                                )
+                            }
+                            ScreenState.MAP_VIEW -> {
+                                MapScreen(
+                                    viewModel = viewModel,
+                                    onBack = { viewModel.navigateTo(ScreenState.HOME) }
                                 )
                             }
                         }

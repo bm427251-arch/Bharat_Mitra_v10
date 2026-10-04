@@ -7,7 +7,14 @@ enum class ScreenState {
     HIRE_DRIVER,
     ELITE_SERVICE,
     ADMIN_PANEL,
-    ACTIVE_RIDE_TRACKING
+    ACTIVE_RIDE_TRACKING,
+    MAP_VIEW,
+    RIDER_CATEGORY,
+    DRIVER_CATEGORY,
+    RENT_CATEGORY,
+    PROFILE_CREATE,
+    DRIVER_REGISTRATION,
+    RENT_REGISTRATION
 }
 
 enum class VehicleCategory(val displayName: String) {
@@ -135,7 +142,8 @@ data class LocationSuggestion(
     val subtitle: String,
     val lat: Double,
     val lng: Double,
-    val distanceKmFromCenter: Double
+    val distanceKmFromCenter: Double,
+    val dynamicDistanceKm: Double? = null
 )
 
 data class UserComplaint(
@@ -172,4 +180,41 @@ data class UserRating(
     val feedback: String,
     val category: String,
     val date: String
+)
+
+data class RiderProfile(
+    val id: String,
+    val name: String,
+    val phone: String,
+    val vehicleType: String, // "BIKE" or "TOTO"
+    val vehicleNumber: String,
+    val address: String,
+    val aadhaarMasked: String = "XXXX-XXXX-4819",
+    val drivingLicence: String = "",
+    val photoUri: String = "",
+    val rating: Double = 4.9,
+    val isVerified: Boolean = true
+)
+
+data class RentCarItem(
+    val id: String,
+    val model: String,
+    val vehicleNumber: String,
+    val photoUri: String = "",
+    val rcNumber: String = "",
+    val insuranceNumber: String = ""
+)
+
+data class RentACarOwnerProfile(
+    val id: String,
+    val ownerName: String,
+    val companyName: String = "",
+    val phone: String,
+    val address: String,
+    val aadhaarMasked: String = "XXXX-XXXX-4819",
+    val panNumber: String = "ABCDE1234F",
+    val businessLicence: String = "TRD/2026/BAR/9012",
+    val bankDetails: String = "State Bank of India • A/C: XXXX-XXXX-5541 • IFSC: SBIN0000024",
+    val cars: List<RentCarItem> = emptyList(),
+    val isVerified: Boolean = true
 )

@@ -1,7 +1,13 @@
 package com.example.ui.screens
 
+import android.Manifest
+import android.content.Intent
+import android.content.pm.PackageManager
 import android.widget.Toast
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.*
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -29,9 +35,11 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
+import androidx.core.content.ContextCompat
 import coil.compose.AsyncImage
 import com.example.data.SampleData
 import com.example.model.RideOption
+import com.example.model.ScreenState
 import com.example.ui.components.BharatMitraLogo
 import com.example.ui.components.InteractiveMapCanvas
 import com.example.ui.theme.AshokaBlue
@@ -45,7 +53,10 @@ fun HomeScreen(
     viewModel: MainViewModel,
     onNavigateToRentCar: () -> Unit,
     onNavigateToHireDriver: () -> Unit,
-    onNavigateToElite: () -> Unit
+    onNavigateToElite: () -> Unit,
+    onNavigateToRiderCategory: () -> Unit = {},
+    onNavigateToDriverCategory: () -> Unit = {},
+    onNavigateToRentCategory: () -> Unit = {}
 ) {
     val context = LocalContext.current
     val pickupLocation by viewModel.pickupLocation.collectAsState()
@@ -54,22 +65,63 @@ fun HomeScreen(
     val selectedRideOption by viewModel.selectedRideOption.collectAsState()
     val isAcSelected by viewModel.isAcSelected.collectAsState()
     val calculatedFare by viewModel.calculatedFare.collectAsState()
+    val calculatedFareWithCommission by viewModel.calculatedFareWithCommission.collectAsState()
+    val platformCommissionAmount by viewModel.platformCommissionAmount.collectAsState()
     val estimatedDistanceKm by viewModel.estimatedDistanceKm.collectAsState()
     val mapDots by viewModel.mapDots.collectAsState()
     val customLogoUri by viewModel.customLogoUri.collectAsState()
     val appAnnouncement by viewModel.appAnnouncement.collectAsState()
     val adminMessages by viewModel.adminMessages.collectAsState()
 
+    // Real-time GPS location state
+    val currentLocation by viewModel.currentLocation.collectAsState()
+    val accuracyMeters by viewModel.accuracyMeters.collectAsState()
+    val isLocationLoading by viewModel.isLocationLoading.collectAsState()
+    val isGpsEnabled by viewModel.isGpsEnabled.collectAsState()
+    val dynamicSuggestions by viewModel.dynamicSuggestions.collectAsState()
+
     var dropSearchQuery by remember { mutableStateOf("") }
     var isSearchingDrop by remember { mutableStateOf(false) }
     var showUserInboxDialog by remember { mutableStateOf(false) }
     var showComplaintDialog by remember { mutableStateOf(false) }
+    var showGpsEnableDialog by remember { mutableStateOf(false) }
 
-    val filteredSuggestions = remember(dropSearchQuery) {
-        if (dropSearchQuery.isBlank()) {
-            SampleData.locationSuggestions
+    // Requirement 2: Handle permission request with rememberLauncherForActivityResult
+    val locationPermissionLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.RequestMultiplePermissions()
+    ) { permissions ->
+        val isGranted = permissions[Manifest.permission.ACCESS_FINE_LOCATION] == true ||
+                permissions[Manifest.permission.ACCESS_COARSE_LOCATION] == true
+        if (isGranted) {
+            viewModel.startLocationUpdates()
+        }
+    }
+
+    // Launch location updates on startup
+    LaunchedEffect(Unit) {
+        val hasFine = ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED
+        val hasCoarse = ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_COARSE_LOCATION) == PackageManager.PERMISSION_GRANTED
+        if (hasFine || hasCoarse) {
+            viewModel.startLocationUpdates()
         } else {
-            SampleData.locationSuggestions.filter {
+            locationPermissionLauncher.launch(
+                arrayOf(
+                    Manifest.permission.ACCESS_FINE_LOCATION,
+                    Manifest.permission.ACCESS_COARSE_LOCATION
+                )
+            )
+        }
+        if (!viewModel.checkGpsStatus()) {
+            showGpsEnableDialog = true
+        }
+    }
+
+    // Requirement 4: Drop suggestions with current location bias (dynamic distance)
+    val filteredSuggestions = remember(dropSearchQuery, dynamicSuggestions) {
+        if (dropSearchQuery.isBlank()) {
+            dynamicSuggestions
+        } else {
+            dynamicSuggestions.filter {
                 it.title.contains(dropSearchQuery, ignoreCase = true) ||
                 it.subtitle.contains(dropSearchQuery, ignoreCase = true)
             }
@@ -224,7 +276,7 @@ fun HomeScreen(
             }
         },
         bottomBar = {
-            // Requirement 3 & 4: Dedicated 4-Tab Navigation: Home, Rent A Car, Hire Driver, Elite ₹29
+            // Requirement 3 & 4: Dedicated 4-Tab Navigation: Home, Rent A Car, Hire Driver, Elite
             // (Dedicated Elite Profile & Form resides exclusively inside the Elite section)
             NavigationBar(
                 containerColor = MaterialTheme.colorScheme.surface,
@@ -263,8 +315,8 @@ fun HomeScreen(
                 NavigationBarItem(
                     selected = false,
                     onClick = onNavigateToElite,
-                    icon = { Icon(Icons.Default.Shield, contentDescription = "Elite ₹29") },
-                    label = { Text("Elite ₹29") },
+                    icon = { Icon(Icons.Default.Shield, contentDescription = "Elite") },
+                    label = { Text("Elite") },
                     modifier = Modifier.testTag("nav_item_elite")
                 )
             }
@@ -292,6 +344,21 @@ fun HomeScreen(
                         viewModel.confirmDropLocation()
                     }
                 )
+
+                // Open Google Map View FAB button
+                FloatingActionButton(
+                    onClick = { viewModel.navigateTo(ScreenState.MAP_VIEW) },
+                    modifier = Modifier
+                        .align(Alignment.TopEnd)
+                        .padding(8.dp)
+                        .size(38.dp)
+                        .testTag("open_full_map_btn"),
+                    containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.92f),
+                    contentColor = SaffronPrimary,
+                    shape = CircleShape
+                ) {
+                    Icon(Icons.Default.Map, contentDescription = "Open Google Map", modifier = Modifier.size(20.dp))
+                }
             }
 
             // Booking Form Section
@@ -309,40 +376,216 @@ fun HomeScreen(
                         .padding(horizontal = 16.dp, vertical = 12.dp),
                     verticalArrangement = Arrangement.spacedBy(10.dp)
                 ) {
-                    // Pickup Location Box (Auto-detected from GPS)
+                    // 1. HOME SCREEN - 3 Main Category Cards in Grid (Rider, Driver, Rent A Car)
+                    item {
+                        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Text(
+                                    text = "Join Partner Fleet / প্রোফাইল তৈরি করুন",
+                                    style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold),
+                                    color = AshokaBlue
+                                )
+                                Surface(
+                                    color = IndianGreen.copy(alpha = 0.15f),
+                                    shape = RoundedCornerShape(6.dp)
+                                ) {
+                                    Text(
+                                        text = "NEW REGISTRATION",
+                                        fontSize = 9.sp,
+                                        fontWeight = FontWeight.ExtraBold,
+                                        color = IndianGreen,
+                                        modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                                    )
+                                }
+                            }
+
+                            // Grid Row: Card 1 (Rider) & Card 2 (Driver)
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.spacedBy(10.dp)
+                            ) {
+                                // Card 1: RIDER (Bike + Toto)
+                                Card(
+                                    modifier = Modifier
+                                        .weight(1f)
+                                        .clickable { onNavigateToRiderCategory() }
+                                        .testTag("home_category_rider_card"),
+                                    shape = RoundedCornerShape(14.dp),
+                                    colors = CardDefaults.cardColors(containerColor = SaffronPrimary.copy(alpha = 0.08f)),
+                                    border = BorderStroke(1.5.dp, SaffronPrimary.copy(alpha = 0.45f))
+                                ) {
+                                    Column(
+                                        modifier = Modifier.padding(12.dp)
+                                    ) {
+                                        Row(
+                                            horizontalArrangement = Arrangement.spacedBy(4.dp),
+                                            verticalAlignment = Alignment.CenterVertically
+                                        ) {
+                                            Icon(Icons.Default.TwoWheeler, contentDescription = null, tint = SaffronPrimary, modifier = Modifier.size(20.dp))
+                                            Icon(Icons.Default.ElectricRickshaw, contentDescription = null, tint = IndianGreen, modifier = Modifier.size(20.dp))
+                                        }
+                                        Spacer(modifier = Modifier.height(6.dp))
+                                        Text("Rider - Bike / Toto", fontWeight = FontWeight.Bold, fontSize = 13.sp)
+                                        Text("বাইক, টোটো চালকদের জন্য", fontSize = 10.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                    }
+                                }
+
+                                // Card 2: DRIVER (Car)
+                                Card(
+                                    modifier = Modifier
+                                        .weight(1f)
+                                        .clickable { onNavigateToDriverCategory() }
+                                        .testTag("home_category_driver_card"),
+                                    shape = RoundedCornerShape(14.dp),
+                                    colors = CardDefaults.cardColors(containerColor = IndianGreen.copy(alpha = 0.08f)),
+                                    border = BorderStroke(1.5.dp, IndianGreen.copy(alpha = 0.45f))
+                                ) {
+                                    Column(
+                                        modifier = Modifier.padding(12.dp)
+                                    ) {
+                                        Icon(Icons.Default.DirectionsCar, contentDescription = null, tint = IndianGreen, modifier = Modifier.size(22.dp))
+                                        Spacer(modifier = Modifier.height(6.dp))
+                                        Text("Driver - Car", fontWeight = FontWeight.Bold, fontSize = 13.sp)
+                                        Text("গাড়ি চালকদের জন্য", fontSize = 10.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                    }
+                                }
+                            }
+
+                            // Card 3: RENT A CAR (Car with key)
+                            Card(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .clickable { onNavigateToRentCategory() }
+                                    .testTag("home_category_rent_card"),
+                                shape = RoundedCornerShape(14.dp),
+                                colors = CardDefaults.cardColors(containerColor = AshokaBlue.copy(alpha = 0.08f)),
+                                border = BorderStroke(1.5.dp, AshokaBlue.copy(alpha = 0.45f))
+                            ) {
+                                Row(
+                                    modifier = Modifier.fillMaxWidth().padding(12.dp),
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.SpaceBetween
+                                ) {
+                                    Row(verticalAlignment = Alignment.CenterVertically) {
+                                        Box(
+                                            modifier = Modifier.size(36.dp).clip(CircleShape).background(AshokaBlue),
+                                            contentAlignment = Alignment.Center
+                                        ) {
+                                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                                Icon(Icons.Default.DirectionsCar, contentDescription = null, tint = Color.White, modifier = Modifier.size(16.dp))
+                                                Icon(Icons.Default.Key, contentDescription = null, tint = SaffronPrimary, modifier = Modifier.size(12.dp))
+                                            }
+                                        }
+                                        Spacer(modifier = Modifier.width(10.dp))
+                                        Column {
+                                            Text("Rent A Car", fontWeight = FontWeight.Bold, fontSize = 13.sp)
+                                            Text("গাড়ি ভাড়া মালিকদের জন্য", fontSize = 10.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                        }
+                                    }
+                                    Icon(Icons.Default.ChevronRight, contentDescription = "Open", tint = AshokaBlue)
+                                }
+                            }
+                        }
+                    }
+
+                    // Pickup Location Box (Auto-detected from GPS with high-accuracy updates)
                     item {
                         Surface(
                             shape = RoundedCornerShape(12.dp),
                             color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.6f),
-                            modifier = Modifier.fillMaxWidth()
+                            modifier = Modifier.fillMaxWidth().testTag("pickup_location_card")
                         ) {
-                            Row(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(horizontal = 12.dp, vertical = 10.dp),
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                Box(
-                                    modifier = Modifier
-                                        .size(10.dp)
-                                        .clip(CircleShape)
-                                        .background(IndianGreen)
-                                )
-                                Spacer(modifier = Modifier.width(10.dp))
-                                Column(modifier = Modifier.weight(1f)) {
-                                    Text("PICKUP (AUTO-DETECTED GPS)", fontSize = 10.sp, fontWeight = FontWeight.Bold, color = IndianGreen)
-                                    Text(
-                                        text = pickupLocation,
-                                        fontSize = 13.sp,
-                                        fontWeight = FontWeight.SemiBold,
-                                        maxLines = 1
-                                    )
-                                }
-                                IconButton(
-                                    onClick = { viewModel.autoDetectPickupLocation() },
-                                    modifier = Modifier.size(32.dp).testTag("gps_detect_btn")
+                            Column(modifier = Modifier.padding(horizontal = 12.dp, vertical = 10.dp)) {
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    verticalAlignment = Alignment.CenterVertically
                                 ) {
-                                    Icon(Icons.Default.MyLocation, contentDescription = "Detect Live GPS", tint = SaffronPrimary, modifier = Modifier.size(18.dp))
+                                    Box(
+                                        modifier = Modifier
+                                            .size(10.dp)
+                                            .clip(CircleShape)
+                                            .background(IndianGreen)
+                                    )
+                                    Spacer(modifier = Modifier.width(10.dp))
+                                    Column(modifier = Modifier.weight(1f)) {
+                                        Row(verticalAlignment = Alignment.CenterVertically) {
+                                            Text(
+                                                "PICKUP LOCATION (GPS ACCURATE)",
+                                                fontSize = 10.sp,
+                                                fontWeight = FontWeight.Bold,
+                                                color = IndianGreen
+                                            )
+                                            if (isLocationLoading) {
+                                                Spacer(modifier = Modifier.width(6.dp))
+                                                CircularProgressIndicator(
+                                                    modifier = Modifier.size(12.dp).testTag("gps_loading_spinner"),
+                                                    strokeWidth = 1.5.dp,
+                                                    color = SaffronPrimary
+                                                )
+                                            }
+                                        }
+                                        Text(
+                                            text = pickupLocation,
+                                            fontSize = 13.sp,
+                                            fontWeight = FontWeight.SemiBold,
+                                            maxLines = 2
+                                        )
+                                    }
+                                    // Small GPS icon button near pickup field - on click re-centers to current accurate location
+                                    IconButton(
+                                        onClick = { viewModel.refreshAccurateLocation() },
+                                        modifier = Modifier.size(36.dp).testTag("gps_detect_btn")
+                                    ) {
+                                        Icon(
+                                            Icons.Default.GpsFixed,
+                                            contentDescription = "Re-center accurate GPS",
+                                            tint = SaffronPrimary,
+                                            modifier = Modifier.size(20.dp)
+                                        )
+                                    }
+                                }
+
+                                // Debug accuracy in meters & weak GPS indicator
+                                Spacer(modifier = Modifier.height(4.dp))
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.SpaceBetween,
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Row(verticalAlignment = Alignment.CenterVertically) {
+                                        Icon(
+                                            Icons.Default.MyLocation,
+                                            contentDescription = null,
+                                            tint = if ((accuracyMeters ?: 0f) > 50f) Color(0xFFD97706) else IndianGreen,
+                                            modifier = Modifier.size(12.dp)
+                                        )
+                                        Spacer(modifier = Modifier.width(4.dp))
+                                        Text(
+                                            text = if (accuracyMeters != null) {
+                                                "Accuracy: ±${accuracyMeters!!.toInt()}m ${if (accuracyMeters!! <= 50f) "(Accurate)" else "(Weak GPS > 50m)"}"
+                                            } else {
+                                                "Locking high-precision GPS..."
+                                            },
+                                            fontSize = 10.sp,
+                                            fontWeight = FontWeight.Medium,
+                                            color = if ((accuracyMeters ?: 0f) > 50f) Color(0xFFD97706) else MaterialTheme.colorScheme.onSurfaceVariant
+                                        )
+                                    }
+
+                                    // If accuracy > 50m, offer instant re-calibration
+                                    if ((accuracyMeters ?: 0f) > 50f) {
+                                        TextButton(
+                                            onClick = { viewModel.refreshAccurateLocation() },
+                                            contentPadding = PaddingValues(horizontal = 6.dp, vertical = 0.dp),
+                                            modifier = Modifier.height(24.dp)
+                                        ) {
+                                            Text("Recalibrate GPS", fontSize = 10.sp, fontWeight = FontWeight.Bold, color = SaffronPrimary)
+                                        }
+                                    }
                                 }
                             }
                         }
@@ -358,7 +601,7 @@ fun HomeScreen(
                                 isSearchingDrop = true
                             },
                             label = { Text("Where to? (Type destination)") },
-                            placeholder = { Text("e.g., Barasat Court, Colony More, Madhyamgram") },
+                            placeholder = { Text("e.g., Barasat Court, Colony More, Barasat Station") },
                             leadingIcon = {
                                 Box(modifier = Modifier.size(10.dp).clip(CircleShape).background(SaffronPrimary))
                             },
@@ -418,7 +661,12 @@ fun HomeScreen(
                                         Text(suggestion.title, fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
                                         Text(suggestion.subtitle, fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
                                     }
-                                    Text("${suggestion.distanceKmFromCenter} km", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = SaffronPrimary)
+                                    Text(
+                                        text = "${suggestion.dynamicDistanceKm ?: suggestion.distanceKmFromCenter} km from you",
+                                        fontSize = 11.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        color = SaffronPrimary
+                                    )
                                 }
                             }
                         }
@@ -581,22 +829,34 @@ fun HomeScreen(
 
                         // Confirm & Book Ride Button
                         item {
-                            Button(
-                                onClick = { viewModel.bookCurrentRide() },
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .height(52.dp)
-                                    .padding(top = 4.dp)
-                                    .testTag("book_ride_button"),
-                                colors = ButtonDefaults.buttonColors(containerColor = SaffronPrimary),
-                                shape = RoundedCornerShape(14.dp)
-                            ) {
-                                Text(
-                                    text = "BOOK ${selectedRideOption.name.uppercase()} • ₹$calculatedFare",
-                                    fontSize = 14.sp,
-                                    fontWeight = FontWeight.ExtraBold,
-                                    letterSpacing = 0.5.sp
-                                )
+                            Column {
+                                Button(
+                                    onClick = { viewModel.bookCurrentRide() },
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .height(52.dp)
+                                        .padding(top = 4.dp)
+                                        .testTag("book_ride_button"),
+                                    colors = ButtonDefaults.buttonColors(containerColor = SaffronPrimary),
+                                    shape = RoundedCornerShape(14.dp)
+                                ) {
+                                    Text(
+                                        text = "BOOK ${selectedRideOption.name.uppercase()} • ₹$calculatedFareWithCommission",
+                                        fontSize = 14.sp,
+                                        fontWeight = FontWeight.ExtraBold,
+                                        letterSpacing = 0.5.sp
+                                    )
+                                }
+                                Row(
+                                    modifier = Modifier.fillMaxWidth().padding(top = 4.dp),
+                                    horizontalArrangement = Arrangement.Center
+                                ) {
+                                    Text(
+                                        text = "Base ₹$calculatedFare + 15% Platform Commission (₹$platformCommissionAmount)",
+                                        fontSize = 11.sp,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                }
                             }
                         }
                     }
@@ -711,5 +971,38 @@ fun HomeScreen(
                 }
             }
         }
+    }
+
+    // Requirement 2: Check if GPS is enabled - if not, show dialog to enable GPS
+    if (showGpsEnableDialog && !isGpsEnabled) {
+        AlertDialog(
+            onDismissRequest = { showGpsEnableDialog = false },
+            icon = { Icon(Icons.Default.LocationOff, contentDescription = null, tint = SaffronPrimary) },
+            title = { Text("Enable Device Location (GPS)", fontWeight = FontWeight.Bold) },
+            text = {
+                Text("High-accuracy GPS is required to detect your exact pickup point and calculate correct transparent ride fares. Please turn on location services in device settings.")
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        showGpsEnableDialog = false
+                        try {
+                            val intent = Intent(android.provider.Settings.ACTION_LOCATION_SOURCE_SETTINGS)
+                            context.startActivity(intent)
+                        } catch (e: Exception) {
+                            Toast.makeText(context, "Please open device Settings -> Location", Toast.LENGTH_SHORT).show()
+                        }
+                    },
+                    colors = ButtonDefaults.buttonColors(containerColor = SaffronPrimary)
+                ) {
+                    Text("OPEN SETTINGS")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showGpsEnableDialog = false }) {
+                    Text("USE DEFAULT")
+                }
+            }
+        )
     }
 }

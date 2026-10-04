@@ -73,30 +73,30 @@ object SampleData {
         LocationSuggestion(
             title = "Barasat Court",
             subtitle = "Kachhari Road, Barasat, North 24 Parganas",
-            lat = 22.7212,
-            lng = 88.4815,
-            distanceKmFromCenter = 1.8
+            lat = 22.7222,
+            lng = 88.4812,
+            distanceKmFromCenter = 1.2
         ),
         LocationSuggestion(
             title = "Colony More",
             subtitle = "Jessore Road Crossing, Barasat",
-            lat = 22.7150,
-            lng = 88.4770,
-            distanceKmFromCenter = 2.4
+            lat = 22.7235,
+            lng = 88.4825,
+            distanceKmFromCenter = 0.5
+        ),
+        LocationSuggestion(
+            title = "Barasat Station",
+            subtitle = "Station Road, Barasat, Sealdah North Section",
+            lat = 22.7198,
+            lng = 88.4841,
+            distanceKmFromCenter = 1.6
         ),
         LocationSuggestion(
             title = "Madhyamgram Chowmatha",
             subtitle = "Sodepur-Barasat Road Junction, Madhyamgram",
             lat = 22.6980,
             lng = 88.4550,
-            distanceKmFromCenter = 5.2
-        ),
-        LocationSuggestion(
-            title = "Barasat Railway Station",
-            subtitle = "Station Road, Barasat, Sealdah North Section",
-            lat = 22.7235,
-            lng = 88.4842,
-            distanceKmFromCenter = 2.1
+            distanceKmFromCenter = 4.8
         ),
         LocationSuggestion(
             title = "Champadali More Bus Terminus",
@@ -367,6 +367,79 @@ object SampleData {
             sentAt = "Yesterday, 04:30 PM",
             recipientType = "All Users",
             isUrgent = true
+        )
+    )
+
+    val sampleRiders = listOf(
+        RiderProfile(
+            id = "rdr_1",
+            name = "Raju Mondal",
+            phone = "+91 97482 11984",
+            vehicleType = "TOTO",
+            vehicleNumber = "WB-26-E-1842",
+            address = "Colony More, Jessore Road, Barasat",
+            aadhaarMasked = "XXXX-XXXX-4819",
+            drivingLicence = "Exempt / Verified e-Vehicle",
+            rating = 4.9,
+            isVerified = true
+        ),
+        RiderProfile(
+            id = "rdr_2",
+            name = "Arup Karmakar",
+            phone = "+91 98305 66712",
+            vehicleType = "BIKE",
+            vehicleNumber = "WB-25-BK-9180",
+            address = "Kachhari Road, Barasat Court",
+            aadhaarMasked = "XXXX-XXXX-7721",
+            drivingLicence = "WB-25-2019-00918",
+            rating = 4.85,
+            isVerified = true
+        ),
+        RiderProfile(
+            id = "rdr_3",
+            name = "Prabir Das",
+            phone = "+91 91238 44091",
+            vehicleType = "TOTO",
+            vehicleNumber = "WB-26-E-4421",
+            address = "Station Road, Barasat Junction",
+            aadhaarMasked = "XXXX-XXXX-3310",
+            drivingLicence = "Exempt / Verified e-Vehicle",
+            rating = 4.88,
+            isVerified = true
+        )
+    )
+
+    val sampleRentOwners = listOf(
+        RentACarOwnerProfile(
+            id = "rent_own_1",
+            ownerName = "Bikash Mukherjee",
+            companyName = "Maa Tara Car Travels",
+            phone = "+91 98310 99421",
+            address = "Champadali More, Barasat, North 24 Parganas",
+            aadhaarMasked = "XXXX-XXXX-1928",
+            panNumber = "BMUKP4412K",
+            businessLicence = "TRD/2025/BST/7781",
+            bankDetails = "State Bank of India • A/C: 38210944120 • IFSC: SBIN0000024",
+            cars = listOf(
+                RentCarItem("car_1", "Toyota Innova Crysta Luxury", "WB-02-AK-7719", "", "RC-991204", "National Ins #8812"),
+                RentCarItem("car_2", "Maruti Suzuki Dzire Tour", "WB-25-AB-4921", "", "RC-441290", "Digit Comprehensive")
+            ),
+            isVerified = true
+        ),
+        RentACarOwnerProfile(
+            id = "rent_own_2",
+            ownerName = "Debabrata Ghosh",
+            companyName = "Bengal Highway Fleet Co.",
+            phone = "+91 98301 55678",
+            address = "Jessore Road, Madhyamgram Chowmatha",
+            aadhaarMasked = "XXXX-XXXX-8821",
+            panNumber = "DGHO18892L",
+            businessLicence = "TRD/2024/MDG/1102",
+            bankDetails = "HDFC Bank • A/C: 50100492188 • IFSC: HDFC0000142",
+            cars = listOf(
+                RentCarItem("car_3", "Mahindra Scorpio-N 4x4", "WB-25-SC-0811", "", "RC-778219", "Oriental Insurance")
+            ),
+            isVerified = true
         )
     )
 }

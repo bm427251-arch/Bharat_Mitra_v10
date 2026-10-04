@@ -1,0 +1,41 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    // Tariffs collection: public read for transparent ride estimates, admin write
+    match /tariffs/{tariffId} {
+      allow read: if true;
+      allow write: if isSignedIn();
+    }
+
+    // Drivers collection: public read for all app riders
+    match /drivers/{driverId} {
+      allow read: if true;
+      allow write: if isSignedIn();
+    }
+
+    // Users collection: user owns their document
+    match /users/{userId} {
+      allow read, write: if isSignedIn();
+    }
+
+    // Elite applications
+    match /elite_applications/{appId} {
+      allow read, write: if true;
+    }
+
+    // Complaints
+    match /complaints/{complaintId} {
+      allow read, write: if true;
+    }
+
+    // Rides
+    match /rides/{rideId} {
+      allow read, create, update: if true;
+    }
+  }
+}

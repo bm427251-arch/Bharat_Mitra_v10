@@ -1,0 +1,102 @@
+{
+  "entities": {
+    "users": {
+      "title": "User",
+      "description": "User profile with role management",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string" },
+        "phone": { "type": "string" },
+        "email": { "type": "string" },
+        "aadhaarMasked": { "type": "string" },
+        "role": { "type": "string", "enum": ["rider", "driver", "elite", "admin"] },
+        "createdAt": { "type": "string" }
+      },
+      "required": ["name", "phone", "role"]
+    },
+    "elite_applications": {
+      "title": "EliteApplication",
+      "description": "Elite community ₹29 membership applications",
+      "type": "object",
+      "properties": {
+        "regName": { "type": "string" },
+        "regPhone": { "type": "string" },
+        "regEmail": { "type": "string" },
+        "rawAadhaarDigits": { "type": "string" },
+        "orgName": { "type": "string" },
+        "isOrgIdUploaded": { "type": "boolean" },
+        "status": { "type": "string", "enum": ["PENDING", "APPROVED", "REJECTED"] },
+        "appliedAt": { "type": "string" }
+      },
+      "required": ["regName", "regPhone", "status"]
+    },
+    "complaints": {
+      "title": "Complaint",
+      "description": "User grievances and disputes",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "description": { "type": "string" },
+        "status": { "type": "string", "enum": ["PENDING", "INVESTIGATING", "RESOLVED"] },
+        "adminReply": { "type": "string" },
+        "createdAt": { "type": "string" }
+      },
+      "required": ["userId", "description", "status"]
+    },
+    "drivers": {
+      "title": "Driver",
+      "description": "Verified driver profiles and operational status",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string" },
+        "photoUrl": { "type": "string" },
+        "rcNumber": { "type": "string" },
+        "insuranceValidDate": { "type": "string" },
+        "rating": { "type": "number" },
+        "totalTrips": { "type": "integer" },
+        "isVerified": { "type": "boolean" },
+        "shiftFee": { "type": "integer" },
+        "overtimeRate": { "type": "integer" }
+      },
+      "required": ["name", "rcNumber", "isVerified"]
+    },
+    "rides": {
+      "title": "Ride",
+      "description": "Rides booking records with 15% platform commission",
+      "type": "object",
+      "properties": {
+        "pickupLat": { "type": "number" },
+        "pickupLng": { "type": "number" },
+        "dropLat": { "type": "number" },
+        "dropLng": { "type": "number" },
+        "fareBase": { "type": "integer" },
+        "fareWith15PercentCommission": { "type": "integer" },
+        "commissionAmount": { "type": "integer" },
+        "status": { "type": "string" },
+        "riderId": { "type": "string" },
+        "driverId": { "type": "string" },
+        "otp": { "type": "string" },
+        "pickupAddress": { "type": "string" },
+        "dropAddress": { "type": "string" },
+        "createdAt": { "type": "string" }
+      },
+      "required": ["fareBase", "fareWith15PercentCommission", "status"]
+    },
+    "tariffs": {
+      "title": "Tariff",
+      "description": "Standard base fares and commission rates",
+      "type": "object",
+      "properties": {
+        "bikeBase": { "type": "integer" },
+        "totoBase": { "type": "integer" },
+        "autoBase": { "type": "integer" },
+        "fourSeaterNonAc": { "type": "integer" },
+        "fourSeaterAc": { "type": "integer" },
+        "sevenSeaterNonAc": { "type": "integer" },
+        "sevenSeaterAc": { "type": "integer" },
+        "commissionPercent": { "type": "integer" }
+      },
+      "required": ["bikeBase", "totoBase", "commissionPercent"]
+    }
+  }
+}

@@ -4,15 +4,17 @@ import android.app.Application
 import android.content.Context
 import android.content.Intent
 import android.location.Location
-import android.location.LocationManager
 import android.net.Uri
 import android.os.Build
 import android.os.VibrationEffect
 import android.os.Vibrator
+import android.util.Log
 import android.widget.Toast
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.data.SampleData
+import com.example.data.firebase.*
+import com.example.data.location.LocationManager as AppLocationManager
 import com.example.model.*
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
@@ -23,8 +25,8 @@ import kotlinx.coroutines.launch
 
 class MainViewModel(application: Application) : AndroidViewModel(application) {
 
-    // Navigation state
-    private val _currentScreen = MutableStateFlow(ScreenState.SPLASH)
+    // Navigation state - direct to HOME without logo splash
+    private val _currentScreen = MutableStateFlow(ScreenState.HOME)
     val currentScreen: StateFlow<ScreenState> = _currentScreen.asStateFlow()
 
     // Back press tracker
@@ -36,8 +38,17 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     val adminHoldTriggered: StateFlow<Boolean> = _adminHoldTriggered.asStateFlow()
 
     // Location & Booking state
-    private val _pickupLocation = MutableStateFlow("Current Location (Barasat, WB)")
+    val appLocationManager = AppLocationManager(application)
+    val currentLocation: StateFlow<Location?> = appLocationManager.currentLocation
+    val accuracyMeters: StateFlow<Float?> = appLocationManager.accuracyMeters
+    val isLocationLoading: StateFlow<Boolean> = appLocationManager.isLocationLoading
+    val isGpsEnabled: StateFlow<Boolean> = appLocationManager.isGpsEnabled
+
+    private val _pickupLocation = MutableStateFlow("Your Location: Colony More, Jessore Road, Barasat, WB 700124")
     val pickupLocation: StateFlow<String> = _pickupLocation.asStateFlow()
+
+    private val _dynamicSuggestions = MutableStateFlow(SampleData.locationSuggestions)
+    val dynamicSuggestions: StateFlow<List<LocationSuggestion>> = _dynamicSuggestions.asStateFlow()
 
     private val _dropLocation = MutableStateFlow("")
     val dropLocation: StateFlow<String> = _dropLocation.asStateFlow()
@@ -53,6 +64,15 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
     private val _calculatedFare = MutableStateFlow(30)
     val calculatedFare: StateFlow<Int> = _calculatedFare.asStateFlow()
+
+    private val _calculatedFareWithCommission = MutableStateFlow(35)
+    val calculatedFareWithCommission: StateFlow<Int> = _calculatedFareWithCommission.asStateFlow()
+
+    private val _platformCommissionAmount = MutableStateFlow(5)
+    val platformCommissionAmount: StateFlow<Int> = _platformCommissionAmount.asStateFlow()
+
+    private val _currentTariffs = MutableStateFlow(FirestoreTariff())
+    val currentTariffs: StateFlow<FirestoreTariff> = _currentTariffs.asStateFlow()
 
     private val _estimatedDistanceKm = MutableStateFlow(3.8)
     val estimatedDistanceKm: StateFlow<Double> = _estimatedDistanceKm.asStateFlow()
@@ -126,8 +146,158 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     private val _adminMessages = MutableStateFlow(SampleData.sampleAdminMessages)
     val adminMessages: StateFlow<List<AdminMessage>> = _adminMessages.asStateFlow()
 
+    // Category Profile Creation State (Rider, Driver, Rent A Car)
+    private val _riders = MutableStateFlow(SampleData.sampleRiders)
+    val riders: StateFlow<List<RiderProfile>> = _riders.asStateFlow()
+
+    private val _rentOwners = MutableStateFlow(SampleData.sampleRentOwners)
+    val rentOwners: StateFlow<List<RentACarOwnerProfile>> = _rentOwners.asStateFlow()
+
+    private val _selectedRole = MutableStateFlow("RIDER")
+    val selectedRole: StateFlow<String> = _selectedRole.asStateFlow()
+
+    private val _selectedVehicleType = MutableStateFlow("BIKE")
+    val selectedVehicleType: StateFlow<String> = _selectedVehicleType.asStateFlow()
+
+    fun setSelectedCategory(role: String, vehicleType: String = "") {
+        _selectedRole.value = role
+        if (vehicleType.isNotBlank()) {
+            _selectedVehicleType.value = vehicleType
+        }
+    }
+
+    fun registerRider(name: String, phone: String, vehicleType: String, vehicleNumber: String, address: String, dl: String) {
+        val newRider = RiderProfile(
+            id = "rdr_${System.currentTimeMillis()}",
+            name = name,
+            phone = phone,
+            vehicleType = vehicleType,
+            vehicleNumber = vehicleNumber,
+            address = address,
+            drivingLicence = dl.ifBlank { if (vehicleType == "TOTO") "Exempt / Verified e-Vehicle" else "Under Verification" },
+            rating = 5.0,
+            isVerified = true
+        )
+        _riders.value = listOf(newRider) + _riders.value
+        Toast.makeText(getApplication(), "Rider profile registered successfully!", Toast.LENGTH_SHORT).show()
+    }
+
+    fun registerDriver(
+        name: String,
+        phone: String,
+        vehicleModel: String,
+        vehicleNumber: String,
+        vehicleCategory: VehicleCategory,
+        dl: String,
+        rc: String,
+        insurance: String
+    ) {
+        val initials = name.split(" ").mapNotNull { it.firstOrNull()?.toString() }.take(2).joinToString("").uppercase()
+        val newDriver = DriverProfile(
+            id = "drv_${System.currentTimeMillis()}",
+            name = name,
+            avatarInitials = if (initials.isNotBlank()) initials else "DR",
+            phone = phone,
+            rating = 5.0,
+            totalTrips = 0,
+            experienceYears = 3,
+            vehicleModel = vehicleModel,
+            vehicleCategory = vehicleCategory,
+            rcNumber = rc,
+            insuranceValidity = insurance,
+            isRcVerified = true,
+            isInsuranceVerified = true,
+            isAadhaarVerified = true,
+            isCommercialDlVerified = true,
+            isPoliceVerified = true,
+            fixed8HrFee = 800,
+            overtimePerHourRate = 100,
+            bio = "Verified professional driver on Bharat Mitra Network.",
+            badges = listOf("Police Verified", "Commercial DL", "New Driver")
+        )
+        _verifiedDrivers.value = listOf(newDriver) + _verifiedDrivers.value
+        Toast.makeText(getApplication(), "Driver profile registered successfully!", Toast.LENGTH_SHORT).show()
+    }
+
+    fun registerRentOwner(
+        ownerName: String,
+        companyName: String,
+        phone: String,
+        address: String,
+        pan: String,
+        licence: String,
+        bank: String,
+        cars: List<RentCarItem>
+    ) {
+        val newOwner = RentACarOwnerProfile(
+            id = "rent_own_${System.currentTimeMillis()}",
+            ownerName = ownerName,
+            companyName = companyName,
+            phone = phone,
+            address = address,
+            panNumber = pan,
+            businessLicence = licence,
+            bankDetails = bank,
+            cars = cars,
+            isVerified = true
+        )
+        _rentOwners.value = listOf(newOwner) + _rentOwners.value
+        Toast.makeText(getApplication(), "Rent a Car business profile registered!", Toast.LENGTH_SHORT).show()
+    }
+
     init {
         updateCalculatedFare()
+        loadFirestoreTariffs()
+
+        // Sync real-time location address to pickup location
+        viewModelScope.launch {
+            appLocationManager.currentAddress.collect { addr ->
+                _pickupLocation.value = addr
+            }
+        }
+
+        // Sync location to dynamic suggestions distance
+        viewModelScope.launch {
+            appLocationManager.currentLocation.collect { loc ->
+                updateDynamicSuggestions(loc)
+            }
+        }
+    }
+
+    fun startLocationUpdates() {
+        appLocationManager.startLocationUpdates(viewModelScope)
+    }
+
+    fun refreshAccurateLocation() {
+        appLocationManager.requestFreshAccurateLocation(viewModelScope)
+    }
+
+    fun checkGpsStatus(): Boolean {
+        return appLocationManager.checkGpsStatus()
+    }
+
+    private fun updateDynamicSuggestions(currentLoc: Location?) {
+        if (currentLoc == null) {
+            _dynamicSuggestions.value = SampleData.locationSuggestions
+            return
+        }
+        _dynamicSuggestions.value = SampleData.locationSuggestions.map { sug ->
+            val dist = AppLocationManager.calculateDistanceKm(
+                currentLoc.latitude,
+                currentLoc.longitude,
+                sug.lat,
+                sug.lng
+            )
+            sug.copy(dynamicDistanceKm = dist)
+        }.sortedBy { it.dynamicDistanceKm ?: it.distanceKmFromCenter }
+    }
+
+    private fun loadFirestoreTariffs() {
+        viewModelScope.launch {
+            val tariffs = FirestoreManager.loadTariffs(getApplication())
+            _currentTariffs.value = tariffs
+            Log.d("MainViewModel", "Loaded Firestore tariffs (Commission: ${tariffs.commissionPercent}%)")
+        }
     }
 
     // Navigation Methods
@@ -185,28 +355,26 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
     // GPS Auto-detect Pickup
     fun autoDetectPickupLocation() {
-        try {
-            val locationManager = getApplication<Application>().getSystemService(Context.LOCATION_SERVICE) as? LocationManager
-            val location: Location? = locationManager?.getLastKnownLocation(LocationManager.GPS_PROVIDER)
-                ?: locationManager?.getLastKnownLocation(LocationManager.NETWORK_PROVIDER)
-
-            if (location != null) {
-                _pickupLocation.value = "GPS: ${String.format("%.4f", location.latitude)}°N, ${String.format("%.4f", location.longitude)}°E (Barasat Center)"
-            } else {
-                _pickupLocation.value = "Current Location (Barasat Court Area)"
-            }
-            Toast.makeText(getApplication(), "Live GPS pickup location detected", Toast.LENGTH_SHORT).show()
-        } catch (e: SecurityException) {
-            _pickupLocation.value = "Current Location (Barasat, WB)"
-            Toast.makeText(getApplication(), "Location permission recommended for precise GPS", Toast.LENGTH_SHORT).show()
-        }
+        refreshAccurateLocation()
+        Toast.makeText(getApplication(), "Recalibrating high-accuracy GPS...", Toast.LENGTH_SHORT).show()
     }
 
     fun setDropLocation(drop: String) {
         _dropLocation.value = drop
-        // Auto-calculate distance
-        val matched = SampleData.locationSuggestions.find { it.title.equals(drop, ignoreCase = true) }
-        _estimatedDistanceKm.value = matched?.distanceKmFromCenter ?: (3.0 + (drop.length % 7))
+        // Auto-calculate dynamic road distance from current GPS coordinates
+        val matched = _dynamicSuggestions.value.find { it.title.equals(drop, ignoreCase = true) }
+        val curLoc = currentLocation.value
+        val dist = if (matched != null && curLoc != null) {
+            AppLocationManager.calculateDistanceKm(
+                curLoc.latitude,
+                curLoc.longitude,
+                matched.lat,
+                matched.lng
+            )
+        } else {
+            matched?.dynamicDistanceKm ?: matched?.distanceKmFromCenter ?: (3.0 + (drop.length % 7))
+        }
+        _estimatedDistanceKm.value = dist
         updateCalculatedFare()
     }
 
@@ -242,16 +410,48 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         val dist = _estimatedDistanceKm.value
         val baseFare = if (_isAcSelected.value && option.hasAcOption) option.baseFareAc else option.baseFareNonAc
         val extraDistFare = (dist * option.perKmRate).toInt()
-        _calculatedFare.value = baseFare + (extraDistFare / 3)
+        val calculatedBase = baseFare + (extraDistFare / 3)
+        _calculatedFare.value = calculatedBase
+
+        // 15% Platform commission calculation
+        val commissionRate = _currentTariffs.value.commissionPercent / 100.0
+        val withCommission = (calculatedBase * (1.0 + commissionRate)).toInt()
+        _calculatedFareWithCommission.value = withCommission
+        _platformCommissionAmount.value = withCommission - calculatedBase
     }
 
     fun bookCurrentRide() {
         val assignedDriver = _verifiedDrivers.value.randomOrNull() ?: SampleData.verifiedDrivers[0]
         _activeRideDriver.value = assignedDriver
-        _rideOtp.value = (1000..9999).random().toString()
+        val generatedOtp = (1000..9999).random().toString()
+        _rideOtp.value = generatedOtp
         _currentScreen.value = ScreenState.ACTIVE_RIDE_TRACKING
         triggerVibration()
         Toast.makeText(getApplication(), "Driver Assigned! ${assignedDriver.name} is arriving in 3 mins.", Toast.LENGTH_LONG).show()
+
+        // Asynchronously save ride to Firestore rides collection
+        viewModelScope.launch {
+            val base = _calculatedFare.value
+            val withCommission = _calculatedFareWithCommission.value
+            val commission = _platformCommissionAmount.value
+            val timestamp = java.text.SimpleDateFormat("yyyy-MM-dd HH:mm:ss", java.util.Locale.getDefault()).format(java.util.Date())
+
+            FirestoreManager.saveRide(
+                getApplication(),
+                FirestoreRide(
+                    pickupAddress = _pickupLocation.value,
+                    dropAddress = _dropLocation.value,
+                    fareBase = base,
+                    fareWith15PercentCommission = withCommission,
+                    commissionAmount = commission,
+                    status = "DRIVER_ASSIGNED",
+                    riderId = "user_app_rider",
+                    driverId = assignedDriver.id,
+                    otp = generatedOtp,
+                    createdAt = timestamp
+                )
+            )
+        }
     }
 
     fun cancelActiveRide() {
@@ -306,9 +506,26 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         _eliteRegistrations.value = listOf(newRegistration) + _eliteRegistrations.value
         Toast.makeText(
             getApplication(),
-            "Registration submitted! Awaiting Admin verification for ₹29/mo Elite badge.",
+            "Registration submitted! Awaiting Admin verification for Elite badge.",
             Toast.LENGTH_LONG
         ).show()
+
+        // Sync to Firestore elite_applications collection
+        viewModelScope.launch {
+            FirestoreManager.submitEliteApplication(
+                getApplication(),
+                FirestoreEliteApp(
+                    regName = name,
+                    regPhone = phone,
+                    regEmail = email,
+                    rawAadhaarDigits = maskedAadhaar,
+                    orgName = orgName,
+                    isOrgIdUploaded = true,
+                    status = "PENDING",
+                    appliedAt = java.text.SimpleDateFormat("yyyy-MM-dd HH:mm:ss", java.util.Locale.getDefault()).format(java.util.Date())
+                )
+            )
+        }
     }
 
     // Razorpay Integration
@@ -324,10 +541,10 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
     fun toggle24HrGpsSharing(enable: Boolean, context: Context) {
         if (enable) {
-            // Prompt Razorpay ₹29/24hr fee
+            // Prompt Razorpay fee
             openRazorpayPayment(context)
             _is24HrGpsSharingActive.value = true
-            Toast.makeText(context, "24-Hour Continuous Group GPS Sharing Activated (₹29/24hr)", Toast.LENGTH_LONG).show()
+            Toast.makeText(context, "24-Hour Continuous Group GPS Sharing Activated", Toast.LENGTH_LONG).show()
         } else {
             _is24HrGpsSharingActive.value = false
             Toast.makeText(context, "Continuous Group GPS Sharing deactivated", Toast.LENGTH_SHORT).show()

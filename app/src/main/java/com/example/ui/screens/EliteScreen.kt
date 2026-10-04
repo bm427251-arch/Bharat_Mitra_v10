@@ -43,12 +43,12 @@ import com.example.ui.theme.SaffronPrimary
 import com.example.viewmodel.MainViewModel
 
 /**
- * Requirement 5: Elite Service Section (₹29/month subscription)
+ * Requirement 5: Elite Service Section (Community Safety Network)
  * - Registration Form: Collects Name, Phone, Email, [Aadhaar Redacted], and Political/Org ID photo.
  * - Map Dot System: Orange Dot (Nearby 1/3/5km radius), Green Dot (Group members globally).
  * - Call Logic & Privacy: Orange Call (Public Emergency), Green Call (Group Only), Privacy Feature.
  * - Payments & GPS Sharing: Razorpay link integration (razorpay.me/@bharatmitrainfotech),
- *   Extra ₹29/24hr fee for continuous group GPS sharing.
+ *   Continuous group GPS sharing.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -88,7 +88,7 @@ fun EliteScreen(
                                 shape = RoundedCornerShape(6.dp)
                             ) {
                                 Text(
-                                    "₹29/mo",
+                                    "ELITE",
                                     fontSize = 11.sp,
                                     fontWeight = FontWeight.ExtraBold,
                                     color = SaffronPrimary,
@@ -137,7 +137,7 @@ fun EliteScreen(
                                     style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold)
                                 )
                                 Text(
-                                    text = "₹29 / Month • Self or Third-Party Payment",
+                                    text = "Verified Community • Mutual Emergency Protection",
                                     fontSize = 12.sp,
                                     color = MaterialTheme.colorScheme.onSecondaryContainer
                                 )
@@ -360,7 +360,7 @@ fun EliteScreen(
                 }
             }
 
-            // 4. 24-Hour Continuous Group GPS Sharing (Extra ₹29/24hr)
+            // 4. 24-Hour Continuous Group GPS Sharing
             item {
                 Card(
                     shape = RoundedCornerShape(14.dp),
@@ -382,7 +382,7 @@ fun EliteScreen(
                                     style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold)
                                 )
                                 Text(
-                                    text = "Extra ₹29/24hr fee managed by Group Admin",
+                                    text = "Continuous group tracking managed by Group Admin",
                                     fontSize = 11.sp,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant
                                 )
