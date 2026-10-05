@@ -12,40 +12,33 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 
 private val DarkColorScheme = darkColorScheme(
-    primary = SaffronLight,
-    onPrimary = Color.Black,
-    primaryContainer = SaffronDark,
-    onPrimaryContainer = Color.White,
-    secondary = Color(0xFF60A5FA),
-    onSecondary = Color.Black,
-    secondaryContainer = NavyLight,
-    onSecondaryContainer = Color.White,
-    tertiary = IndianGreenLight,
-    onTertiary = Color.Black,
-    tertiaryContainer = IndianGreen,
-    onTertiaryContainer = Color.White,
-    background = DarkBackground,
-    onBackground = TextPrimaryDark,
-    surface = DarkSurface,
-    onSurface = TextPrimaryDark,
-    surfaceVariant = DarkSurfaceVariant,
-    onSurfaceVariant = TextSecondaryDark,
-    error = EmergencyRed,
-    errorContainer = Color(0xFF7F1D1D)
+    primary = BharatOrange,
+    onPrimary = Color.White,
+    primaryContainer = BharatOrangeLight,
+    onPrimaryContainer = Color.Black,
+    secondary = BharatDarkBlue,
+    onSecondary = Color.White,
+    tertiary = BharatGreen,
+    onTertiary = Color.White,
+    background = BharatDarkBlueVariant,
+    onBackground = Color.White,
+    surface = BharatDarkBlue,
+    onSurface = Color.White,
+    error = EmergencyRed
 )
 
 private val LightColorScheme = lightColorScheme(
-    primary = SaffronPrimary,
+    primary = BharatOrange,
     onPrimary = Color.White,
     primaryContainer = Color(0xFFFFEDD5),
     onPrimaryContainer = Color(0xFF7C2D12),
-    secondary = NavySecondary,
+    secondary = BharatDarkBlue,
     onSecondary = Color.White,
-    secondaryContainer = NavyContainer,
-    onSecondaryContainer = NavySecondary,
-    tertiary = IndianGreen,
+    secondaryContainer = Color(0xFFE2E8F0),
+    onSecondaryContainer = BharatDarkBlue,
+    tertiary = BharatGreen,
     onTertiary = Color.White,
-    tertiaryContainer = IndianGreenContainer,
+    tertiaryContainer = Color(0xFFDCFCE7),
     onTertiaryContainer = Color(0xFF052E16),
     background = LightBackground,
     onBackground = TextPrimaryLight,
@@ -58,10 +51,10 @@ private val LightColorScheme = lightColorScheme(
 )
 
 @Composable
-fun MyApplicationTheme(
+fun BharatMitraTheme(
     darkTheme: Boolean = isSystemInDarkTheme(),
     dynamicColor: Boolean = false, // Keep Bharat Mitra branding consistent
-    content: @Composable () -> Unit,
+    content: @Composable () -> Unit
 ) {
     val colorScheme = when {
         dynamicColor && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S -> {

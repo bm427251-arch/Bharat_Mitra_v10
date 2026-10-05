@@ -9,7 +9,7 @@ import androidx.compose.material3.Surface
 import androidx.compose.ui.Modifier
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.ui.MainScreen
-import com.example.ui.theme.MyApplicationTheme
+import com.example.ui.theme.BharatMitraTheme
 import com.example.viewmodel.MainViewModel
 
 class MainActivity : ComponentActivity() {
@@ -17,7 +17,7 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         setContent {
-            MyApplicationTheme {
+            BharatMitraTheme {
                 val viewModel: MainViewModel = viewModel()
                 Surface(modifier = Modifier.fillMaxSize()) {
                     MainScreen(viewModel = viewModel)

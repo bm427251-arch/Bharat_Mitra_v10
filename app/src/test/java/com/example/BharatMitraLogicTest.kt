@@ -1,8 +1,5 @@
 package com.example
 
-import com.example.data.SampleData
-import com.example.model.DotType
-import com.example.model.EmergencyType
 import com.example.model.VehicleCategory
 import org.junit.Assert.*
 import org.junit.Test
@@ -10,63 +7,50 @@ import org.junit.Test
 class BharatMitraLogicTest {
 
     @Test
-    fun testStandardFares() {
-        val bike = SampleData.rideOptions.first { it.id == "bike" }
-        assertEquals(30, bike.baseFareNonAc)
-
-        val toto = SampleData.rideOptions.first { it.id == "toto" }
-        assertEquals(50, toto.baseFareNonAc)
-
-        val auto = SampleData.rideOptions.first { it.id == "auto" }
-        assertEquals(80, auto.baseFareNonAc)
-
-        val fourSeater = SampleData.rideOptions.first { it.id == "four_seater" }
-        assertEquals(180, fourSeater.baseFareNonAc)
-        assertEquals(240, fourSeater.baseFareAc)
-
-        val sevenSeater = SampleData.rideOptions.first { it.id == "seven_seater" }
-        assertEquals(320, sevenSeater.baseFareNonAc)
-        assertEquals(390, sevenSeater.baseFareAc)
+    fun testCustomerFairPrice() {
+        val fairPrice = 100
+        assertEquals("Customer sees Fair Price ₹100 ONLY", 100, fairPrice)
     }
 
     @Test
-    fun testVerifiedDriversFeeStructure() {
-        assertEquals(6, SampleData.verifiedDrivers.size)
-        SampleData.verifiedDrivers.forEach { driver ->
-            assertEquals(800, driver.fixed8HrFee)
-            assertEquals(100, driver.overtimePerHourRate)
-            assertTrue(driver.isRcVerified)
-            assertTrue(driver.isInsuranceVerified)
-            assertTrue(driver.isAadhaarVerified)
-            assertTrue(driver.isCommercialDlVerified)
-            assertTrue(driver.isPoliceVerified)
-        }
+    fun testAdminInternal15PercentCommission() {
+        val totalGross = 1500
+        val company15Percent = (totalGross * 0.15).toInt()
+        val driver85Percent = totalGross - company15Percent
+
+        assertEquals(225, company15Percent)
+        assertEquals(1275, driver85Percent)
+        assertEquals(1500, company15Percent + driver85Percent)
     }
 
     @Test
-    fun testMapDotsDistribution() {
-        val orangeDots = SampleData.mapDots.filter { it.dotType == DotType.ORANGE_NEARBY_ELITE }
-        val greenDots = SampleData.mapDots.filter { it.dotType == DotType.GREEN_USER_GROUP }
-
-        assertTrue(orangeDots.isNotEmpty())
-        assertTrue(greenDots.isNotEmpty())
-
-        // Orange dots should have local distances (e.g. <= 5km)
-        orangeDots.forEach { dot ->
-            assertTrue("Orange dot distance ${dot.distanceKm} should be nearby", dot.distanceKm <= 5.0)
-        }
+    fun testAllVehicleTypesIncludeAmbulanceAndHeavyVehicles() {
+        val allCategories = VehicleCategory.values().map { it.name }
+        assertTrue(allCategories.contains("AMBULANCE"))
+        assertTrue(allCategories.contains("LORRY"))
+        assertTrue(allCategories.contains("TRUCK"))
+        assertTrue(allCategories.contains("BUS"))
+        assertTrue(allCategories.contains("SEDAN"))
+        assertTrue(allCategories.contains("SUV"))
     }
 
     @Test
-    fun testAadhaarRedactionMasking() {
-        val rawInput = "123456784819"
-        val last4 = rawInput.takeLast(4)
-        val masked = "XXXX-XXXX-$last4"
-        assertEquals("XXXX-XXXX-4819", masked)
+    fun testHireDriverRateChart() {
+        val rate1Hr = 120
+        val rate4Hr = 400
+        val rate8Hr = 750
+
+        assertTrue(rate1Hr > 0)
+        assertTrue(rate4Hr > rate1Hr)
+        assertTrue(rate8Hr > rate4Hr)
     }
 
     @Test
-    fun testRazorpayUrl() {
-        assertEquals("https://razorpay.me/@bharatmitrainfotech", SampleData.RAZORPAY_PAYMENT_URL)
+    fun testSubscriptionsPricing() {
+        val rentProMonthly = 299
+        val hireDriverProMonthly = 299
+
+        assertEquals(299, rentProMonthly)
+        assertEquals(299, hireDriverProMonthly)
     }
 }

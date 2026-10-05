@@ -1,17 +1,13 @@
 package com.example.ui.screens
 
 import android.Manifest
-import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
-import android.location.Geocoder
-import android.location.Location
-import android.os.Looper
+import android.net.Uri
 import android.provider.Settings
 import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.compose.animation.*
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
@@ -21,6 +17,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material.icons.automirrored.filled.ArrowForwardIos
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
@@ -31,209 +28,50 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.content.ContextCompat
+import com.example.ui.components.BharatMitraHeaderLogo
+import com.example.ui.theme.*
 import com.example.viewmodel.MainViewModel
-import com.google.android.gms.location.*
-import com.google.android.gms.maps.CameraUpdateFactory
-import com.google.android.gms.maps.model.CameraPosition
-import com.google.android.gms.maps.model.LatLng
-import com.google.maps.android.compose.*
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
-import java.util.Locale
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun HomeScreen(
     viewModel: MainViewModel,
-    onNavigateToRentCar: () -> Unit = {},
-    onNavigateToHireDriver: () -> Unit = {},
-    onNavigateToElite: () -> Unit = {},
-    onNavigateToRiderCategory: () -> Unit = {},
-    onNavigateToDriverCategory: () -> Unit = {},
-    onNavigateToRentCategory: () -> Unit = {}
+    onNavigateToFleetMap: () -> Unit,
+    onNavigateToRentCar: () -> Unit,
+    onNavigateToHireDriver: () -> Unit,
+    onNavigateToCreateDriver: () -> Unit,
+    onNavigateToWallet: () -> Unit,
+    onNavigateToAdmin: () -> Unit,
+    onNavigateToAutoQr: () -> Unit = {}
 ) {
     val context = LocalContext.current
-    val coroutineScope = rememberCoroutineScope()
-    val haptic = LocalHapticFeedback.current
-    val shimmerBrush = rememberShimmerBrush()
+    val currentAddress by viewModel.currentAddress.collectAsState()
+    val walletBalance by viewModel.walletBalance.collectAsState()
+    val isLocationPermissionGranted by viewModel.isLocationPermissionGranted.collectAsState()
 
-    // 100% Real Device Location state - NO hardcoded Barasat, NO hardcoded Ukiah
-    var pickupAddress by remember { mutableStateOf("Detecting your exact GPS location...") }
-    var dropAddress by remember { mutableStateOf("") }
-    var isLocationLoading by remember { mutableStateOf(false) }
-    var locationAccuracyMeters by remember { mutableStateOf<Float?>(null) }
-    var userLatLng by remember { mutableStateOf<LatLng?>(null) }
-    var selectedFleetTitle by remember { mutableStateOf<String?>("Toto (E-Rickshaw)") }
-    var showGpsDialog by remember { mutableStateOf(false) }
-
-    val fusedLocationClient = remember { LocationServices.getFusedLocationProviderClient(context) }
-    val cameraPositionState = rememberCameraPositionState()
-
-    var hasFinePermission by remember {
-        mutableStateOf(
-            ContextCompat.checkSelfPermission(
-                context,
-                Manifest.permission.ACCESS_FINE_LOCATION
-            ) == PackageManager.PERMISSION_GRANTED
-        )
-    }
-
-    // Filter out Android Studio default emulator mock locations (Ukiah, Google HQ)
-    fun isEmulatorDefaultLocation(lat: Double, lng: Double): Boolean {
-        val isUkiah = (lat in 39.0..39.3 && lng in -123.4..-123.0)
-        val isGoogleHq = (lat in 37.3..37.5 && lng in -122.2..-122.0)
-        return isUkiah || isGoogleHq
-    }
-
-    // Check if GPS hardware is turned on
-    fun checkGpsEnabled(): Boolean {
-        val lm = context.getSystemService(Context.LOCATION_SERVICE) as? android.location.LocationManager
-        val isEnabled = lm?.isProviderEnabled(android.location.LocationManager.GPS_PROVIDER) == true ||
-                lm?.isProviderEnabled(android.location.LocationManager.NETWORK_PROVIDER) == true
-        if (!isEnabled) {
-            showGpsDialog = true
-        }
-        return isEnabled
-    }
-
-    // High accuracy location request with 3000ms interval
-    val locationRequest = remember {
-        LocationRequest.Builder(Priority.PRIORITY_HIGH_ACCURACY, 3000L)
-            .setMinUpdateIntervalMillis(1500L)
-            .setWaitForAccurateLocation(true)
-            .build()
-    }
-
-    // Function to get real current location
-    fun getCurrentStandingLocation() {
-        isLocationLoading = true
-
-        val fineGranted = ContextCompat.checkSelfPermission(
-            context,
-            Manifest.permission.ACCESS_FINE_LOCATION
-        ) == PackageManager.PERMISSION_GRANTED
-        hasFinePermission = fineGranted
-
-        if (!fineGranted) {
-            isLocationLoading = false
-            return
-        }
-
-        if (!checkGpsEnabled()) {
-            isLocationLoading = false
-            return
-        }
-
-        try {
-            fusedLocationClient.getCurrentLocation(Priority.PRIORITY_HIGH_ACCURACY, null)
-                .addOnSuccessListener { location: Location? ->
-                    isLocationLoading = false
-                    if (location != null) {
-                        if (isEmulatorDefaultLocation(location.latitude, location.longitude)) {
-                            Toast.makeText(
-                                context,
-                                "GPS not found on emulator, please test on real device",
-                                Toast.LENGTH_LONG
-                            ).show()
-                            pickupAddress = "GPS not found on emulator, please test on real device"
-                            return@addOnSuccessListener
-                        }
-
-                        val currentLatLng = LatLng(location.latitude, location.longitude)
-                        userLatLng = currentLatLng
-                        locationAccuracyMeters = location.accuracy
-
-                        // Camera moves to exact standing currentLatLng
-                        coroutineScope.launch {
-                            cameraPositionState.animate(
-                                CameraUpdateFactory.newLatLngZoom(currentLatLng, 16.5f),
-                                durationMs = 1000
-                            )
-                        }
-
-                        // Reverse geocode to exact standing address
-                        coroutineScope.launch(Dispatchers.IO) {
-                            try {
-                                val geocoder = Geocoder(context, Locale.getDefault())
-                                @Suppress("DEPRECATION")
-                                val addresses = geocoder.getFromLocation(location.latitude, location.longitude, 1)
-                                val resolved = addresses?.firstOrNull()?.getAddressLine(0)
-                                withContext(Dispatchers.Main) {
-                                    if (!resolved.isNullOrBlank()) {
-                                        pickupAddress = resolved
-                                        viewModel.setPickupLocation(resolved)
-                                    } else {
-                                        val coords = "Exact Location: ${String.format(Locale.US, "%.5f", location.latitude)}, ${String.format(Locale.US, "%.5f", location.longitude)}"
-                                        pickupAddress = coords
-                                        viewModel.setPickupLocation(coords)
-                                    }
-                                }
-                            } catch (e: Exception) {
-                                withContext(Dispatchers.Main) {
-                                    val coords = "Exact Location: ${String.format(Locale.US, "%.5f", location.latitude)}, ${String.format(Locale.US, "%.5f", location.longitude)}"
-                                    pickupAddress = coords
-                                    viewModel.setPickupLocation(coords)
-                                }
-                            }
-                        }
-                    } else {
-                        Toast.makeText(
-                            context,
-                            "GPS not found on emulator, please test on real device",
-                            Toast.LENGTH_LONG
-                        ).show()
-                        if (pickupAddress.contains("Detecting")) {
-                            pickupAddress = "GPS not found on emulator, please test on real device"
-                        }
-                    }
-                }
-                .addOnFailureListener {
-                    isLocationLoading = false
-                    Toast.makeText(
-                        context,
-                        "GPS not found on emulator, please test on real device",
-                        Toast.LENGTH_SHORT
-                    ).show()
-                }
-        } catch (e: SecurityException) {
-            isLocationLoading = false
-        } catch (e: Exception) {
-            isLocationLoading = false
-        }
-    }
-
-    // Permission launcher
+    // Runtime Permission Launcher for Location
     val locationPermissionLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.RequestMultiplePermissions()
     ) { permissions ->
-        val isGranted = permissions[Manifest.permission.ACCESS_FINE_LOCATION] == true ||
-                permissions[Manifest.permission.ACCESS_COARSE_LOCATION] == true
-        hasFinePermission = permissions[Manifest.permission.ACCESS_FINE_LOCATION] == true
-        if (isGranted) {
-            getCurrentStandingLocation()
-        } else {
-            pickupAddress = "Location permission denied. Please grant location access."
-        }
+        val fineGranted = permissions[Manifest.permission.ACCESS_FINE_LOCATION] == true
+        val coarseGranted = permissions[Manifest.permission.ACCESS_COARSE_LOCATION] == true
+        val granted = fineGranted || coarseGranted
+        viewModel.updateLocationPermission(granted)
     }
 
-    // On HomeScreen launch: check permission ACCESS_FINE_LOCATION and fetch
     LaunchedEffect(Unit) {
-        val fineGranted = ContextCompat.checkSelfPermission(
-            context,
-            Manifest.permission.ACCESS_FINE_LOCATION
-        ) == PackageManager.PERMISSION_GRANTED
-        if (fineGranted) {
-            getCurrentStandingLocation()
+        val fineCheck = ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED
+        val coarseCheck = ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_COARSE_LOCATION) == PackageManager.PERMISSION_GRANTED
+        if (fineCheck || coarseCheck) {
+            viewModel.updateLocationPermission(true)
         } else {
             locationPermissionLauncher.launch(
                 arrayOf(
@@ -244,141 +82,120 @@ fun HomeScreen(
         }
     }
 
-    // Continuous location updates when permission is granted
-    DisposableEffect(hasFinePermission) {
-        if (hasFinePermission) {
-            val locationCallback = object : LocationCallback() {
-                override fun onLocationResult(result: LocationResult) {
-                    val loc = result.lastLocation ?: return
-                    if (isEmulatorDefaultLocation(loc.latitude, loc.longitude)) return
-
-                    val currentLatLng = LatLng(loc.latitude, loc.longitude)
-                    userLatLng = currentLatLng
-                    locationAccuracyMeters = loc.accuracy
-
-                    coroutineScope.launch(Dispatchers.IO) {
-                        try {
-                            val geocoder = Geocoder(context, Locale.getDefault())
-                            @Suppress("DEPRECATION")
-                            val addresses = geocoder.getFromLocation(loc.latitude, loc.longitude, 1)
-                            val resolved = addresses?.firstOrNull()?.getAddressLine(0)
-                            if (!resolved.isNullOrBlank()) {
-                                withContext(Dispatchers.Main) {
-                                    pickupAddress = resolved
-                                    viewModel.setPickupLocation(resolved)
-                                }
-                            }
-                        } catch (e: Exception) {
-                            // ignore
-                        }
-                    }
-                }
-            }
-
-            try {
-                fusedLocationClient.requestLocationUpdates(
-                    locationRequest,
-                    locationCallback,
-                    Looper.getMainLooper()
-                )
-            } catch (e: SecurityException) {
-                // ignore
-            }
-
-            onDispose {
-                fusedLocationClient.removeLocationUpdates(locationCallback)
-            }
-        } else {
-            onDispose {}
-        }
-    }
-
-    // Dialog: "Please enable GPS"
-    if (showGpsDialog) {
-        AlertDialog(
-            onDismissRequest = { showGpsDialog = false },
-            title = {
-                Text(
-                    text = "Please enable GPS",
-                    style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold)
-                )
-            },
-            text = {
-                Text("GPS / Location is currently turned off. Please turn on device GPS to detect your real standing location.")
-            },
-            confirmButton = {
-                Button(
-                    onClick = {
-                        showGpsDialog = false
-                        try {
-                            context.startActivity(Intent(Settings.ACTION_LOCATION_SOURCE_SETTINGS))
-                        } catch (e: Exception) {
-                            // ignore
-                        }
-                    },
-                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF0D1B68))
-                ) {
-                    Text("Open Settings")
-                }
-            },
-            dismissButton = {
-                TextButton(onClick = { showGpsDialog = false }) {
-                    Text("Cancel")
-                }
-            }
-        )
-    }
+    // Green pulse animation for Auto-detected Current Location indicator
+    val pulseTransition = rememberInfiniteTransition(label = "location_pulse")
+    val pulseAlpha by pulseTransition.animateFloat(
+        initialValue = 0.35f,
+        targetValue = 1.0f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(700, easing = LinearEasing),
+            repeatMode = RepeatMode.Reverse
+        ),
+        label = "pulse_alpha"
+    )
 
     Scaffold(
         topBar = {
             TopAppBar(
                 title = {
-                    Text(
-                        text = "BHARAT MITRA",
-                        style = MaterialTheme.typography.titleLarge.copy(
-                            color = Color.White,
-                            fontWeight = FontWeight.Black,
-                            letterSpacing = 1.5.sp
-                        )
-                    )
-                },
-                actions = {
-                    IconButton(
-                        onClick = onNavigateToElite,
-                        modifier = Modifier.testTag("home_top_shield_btn")
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Icon(
-                            imageVector = Icons.Default.Shield,
-                            contentDescription = "Elite SOS",
-                            tint = Color(0xFFFA8520),
-                            modifier = Modifier.size(28.dp)
-                        )
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            // Exact static logo asset lock: Image.asset('assets/logo.png', width: 120, height: 40)
+                            BharatMitraHeaderLogo(width = 110.dp, height = 36.dp)
+                            Spacer(modifier = Modifier.width(10.dp))
+                            Column {
+                                Text(
+                                    text = "Hello, Aman!",
+                                    style = MaterialTheme.typography.titleMedium.copy(
+                                        fontWeight = FontWeight.Black,
+                                        fontSize = 17.sp,
+                                        color = Color.White
+                                    )
+                                )
+                                Text(
+                                    text = "Good Morning",
+                                    style = MaterialTheme.typography.bodySmall.copy(
+                                        color = BharatOrangeLight,
+                                        fontSize = 11.sp,
+                                        fontWeight = FontWeight.Medium
+                                    )
+                                )
+                            }
+                        }
+
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            // Auto QR Payment icon button
+                            IconButton(
+                                onClick = onNavigateToAutoQr,
+                                modifier = Modifier.testTag("home_auto_qr_btn")
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.QrCodeScanner,
+                                    contentDescription = "Auto QR Payment",
+                                    tint = BharatOrangeLight
+                                )
+                            }
+
+                            // Wallet balance badge
+                            Surface(
+                                modifier = Modifier
+                                    .clip(RoundedCornerShape(8.dp))
+                                    .clickable { onNavigateToWallet() }
+                                    .testTag("home_wallet_badge"),
+                                color = BharatGreen.copy(alpha = 0.25f),
+                                border = BorderStroke(1.dp, BharatGreen)
+                            ) {
+                                Row(
+                                    modifier = Modifier.padding(horizontal = 6.dp, vertical = 4.dp),
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Icon(Icons.Default.AccountBalanceWallet, contentDescription = null, tint = Color.White, modifier = Modifier.size(13.dp))
+                                    Spacer(modifier = Modifier.width(4.dp))
+                                    Text("₹$walletBalance", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 11.sp)
+                                }
+                            }
+
+                            Spacer(modifier = Modifier.width(2.dp))
+
+                            // Admin panel portal icon button
+                            IconButton(
+                                onClick = onNavigateToAdmin,
+                                modifier = Modifier.testTag("home_admin_btn")
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.AdminPanelSettings,
+                                    contentDescription = "Admin Dashboard",
+                                    tint = Color.White
+                                )
+                            }
+                        }
                     }
                 },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = Color(0xFF0D1B68)
-                )
+                colors = TopAppBarDefaults.topAppBarColors(containerColor = BharatDarkBlue)
             )
         },
         floatingActionButton = {
+            // Fast profile creation for drivers
             FloatingActionButton(
-                onClick = {
-                    haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                    onNavigateToRiderCategory()
-                },
-                containerColor = Color(0xFF138808),
+                onClick = onNavigateToCreateDriver,
+                containerColor = BharatGreen,
                 contentColor = Color.White,
+                shape = RoundedCornerShape(16.dp),
                 modifier = Modifier
-                    .padding(bottom = 80.dp)
-                    .testTag("home_create_profile_fab")
+                    .padding(bottom = 12.dp)
+                    .testTag("home_create_driver_fab")
             ) {
                 Row(
-                    modifier = Modifier.padding(horizontal = 16.dp),
+                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Icon(Icons.Default.Add, contentDescription = null)
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Text("Create Profile", fontWeight = FontWeight.Bold)
+                    Spacer(modifier = Modifier.width(6.dp))
+                    Text("Driver Partner", fontWeight = FontWeight.Bold)
                 }
             }
         }
@@ -387,440 +204,643 @@ fun HomeScreen(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(innerPadding)
+                .background(LightBackground)
                 .padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(14.dp)
+            verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            // West Bengal Active Transport Hub Card (Gradient [#0D1B68, #1E3A8A])
+            // Live drivers indicator banner: "Show 12 drivers available 5-7 min"
             item {
                 Card(
                     modifier = Modifier.fillMaxWidth(),
                     shape = RoundedCornerShape(16.dp),
-                    elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
+                    colors = CardDefaults.cardColors(containerColor = BharatGreen.copy(alpha = 0.10f)),
+                    border = BorderStroke(1.dp, BharatGreen.copy(alpha = 0.4f))
                 ) {
-                    Box(
+                    Row(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .background(
-                                brush = Brush.linearGradient(
-                                    colors = listOf(Color(0xFF0D1B68), Color(0xFF1E3A8A))
-                                )
-                            )
-                            .padding(16.dp)
+                            .padding(14.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.SpaceBetween
                     ) {
-                        Column(
-                            horizontalAlignment = Alignment.Start,
-                            verticalArrangement = Arrangement.spacedBy(6.dp)
-                        ) {
-                            Text(
-                                text = "West Bengal Active Transport Hub",
-                                style = MaterialTheme.typography.titleMedium.copy(
-                                    color = Color.White,
-                                    fontSize = 18.sp,
-                                    fontWeight = FontWeight.Bold
-                                )
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Box(
+                                modifier = Modifier
+                                    .size(10.dp)
+                                    .clip(CircleShape)
+                                    .background(BharatGreen)
                             )
+                            Spacer(modifier = Modifier.width(8.dp))
                             Text(
-                                text = "Zero Commission • Verified Local Drivers • Instant SOS Protection",
-                                style = MaterialTheme.typography.bodyMedium.copy(
-                                    color = Color.White.copy(alpha = 0.8f),
-                                    fontSize = 13.sp
-                                )
+                                text = "12 drivers available nearby",
+                                fontWeight = FontWeight.Bold,
+                                color = BharatGreen,
+                                fontSize = 14.sp
                             )
                         }
+                        Text(
+                            text = "ETA 5-7 min",
+                            fontWeight = FontWeight.SemiBold,
+                            color = BharatDarkBlue,
+                            fontSize = 12.sp
+                        )
                     }
                 }
             }
 
-            // Pickup Radar with GPS Accuracy & Auto-detect
-            item {
-                Card(
-                    modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(20.dp),
-                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-                    elevation = CardDefaults.cardElevation(defaultElevation = 8.dp),
-                    border = BorderStroke(0.5.dp, Color(0xFFE0E0E0))
-                ) {
-                    Column(
-                        modifier = Modifier.padding(16.dp),
-                        verticalArrangement = Arrangement.spacedBy(10.dp)
+            // Permission Denied Card: "Enable Location" -> Opens App Settings
+            if (!isLocationPermissionGranted) {
+                item {
+                    Card(
+                        modifier = Modifier.fillMaxWidth().testTag("enable_location_card"),
+                        shape = RoundedCornerShape(14.dp),
+                        colors = CardDefaults.cardColors(containerColor = EmergencyRedContainer),
+                        border = BorderStroke(1.dp, EmergencyRed)
                     ) {
-                        // Shimmer loading line while GPS fetching
-                        if (isLocationLoading) {
-                            Box(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .height(4.dp)
-                                    .clip(RoundedCornerShape(2.dp))
-                                    .background(shimmerBrush)
-                            )
-                        }
                         Row(
-                            modifier = Modifier.fillMaxWidth(),
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(12.dp),
                             horizontalArrangement = Arrangement.SpaceBetween,
                             verticalAlignment = Alignment.CenterVertically
                         ) {
-                            Row(verticalAlignment = Alignment.CenterVertically) {
-                                Box(
-                                    modifier = Modifier
-                                        .size(8.dp)
-                                        .clip(CircleShape)
-                                        .background(Color(0xFF138808))
-                                )
-                                Spacer(modifier = Modifier.width(6.dp))
+                            Column(modifier = Modifier.weight(1f)) {
                                 Text(
-                                    text = "Pickup Location Radar",
+                                    text = "Location Permission Required",
                                     fontWeight = FontWeight.Bold,
                                     fontSize = 13.sp,
-                                    color = Color(0xFF0D1B68)
+                                    color = EmergencyRed
+                                )
+                                Text(
+                                    text = "Enable GPS to auto-detect your exact pickup location.",
+                                    fontSize = 11.sp,
+                                    color = Color.DarkGray
                                 )
                             }
-
-                            // Accuracy badge
-                            locationAccuracyMeters?.let { acc ->
-                                Surface(
-                                    color = if (acc <= 30f) Color(0xFF138808).copy(alpha = 0.15f) else Color(0xFFFA8520).copy(alpha = 0.15f),
-                                    shape = RoundedCornerShape(6.dp)
-                                ) {
-                                    Text(
-                                        text = if (acc <= 30f) "GPS: ±${acc.toInt()}m (High Precision)" else "GPS: ±${acc.toInt()}m",
-                                        fontSize = 10.sp,
-                                        fontWeight = FontWeight.Bold,
-                                        color = if (acc <= 30f) Color(0xFF138808) else Color(0xFFFA8520),
-                                        modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
-                                    )
-                                }
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Button(
+                                onClick = {
+                                    val intent = Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS).apply {
+                                        data = Uri.fromParts("package", context.packageName, null)
+                                    }
+                                    context.startActivity(intent)
+                                },
+                                colors = ButtonDefaults.buttonColors(containerColor = EmergencyRed),
+                                shape = RoundedCornerShape(8.dp),
+                                modifier = Modifier.height(36.dp).testTag("enable_location_btn")
+                            ) {
+                                Text("Enable Location", fontSize = 11.sp, fontWeight = FontWeight.Bold)
                             }
                         }
-
-                        // Pickup Address Text Field + GPS Refetch Button with Spinner
-                        OutlinedTextField(
-                            value = pickupAddress,
-                            onValueChange = {
-                                pickupAddress = it
-                                viewModel.setPickupLocation(it)
-                            },
-                            label = { Text("Exact Standing Pickup Address") },
-                            leadingIcon = {
-                                Icon(Icons.Default.MyLocation, contentDescription = null, tint = Color(0xFF138808))
-                            },
-                            trailingIcon = {
-                                IconButton(
-                                    onClick = { getCurrentStandingLocation() },
-                                    modifier = Modifier.testTag("refresh_gps_btn")
-                                ) {
-                                    if (isLocationLoading) {
-                                        CircularProgressIndicator(
-                                            modifier = Modifier.size(18.dp),
-                                            strokeWidth = 2.dp,
-                                            color = Color(0xFFFA8520)
-                                        )
-                                    } else {
-                                        Icon(
-                                            Icons.Default.Refresh,
-                                            contentDescription = "Refetch Current GPS",
-                                            tint = Color(0xFFFA8520)
-                                        )
-                                    }
-                                }
-                            },
-                            singleLine = true,
-                            modifier = Modifier.fillMaxWidth().testTag("pickup_address_input"),
-                            shape = RoundedCornerShape(10.dp)
-                        )
-
-                        // Drop Location Field
-                        OutlinedTextField(
-                            value = dropAddress,
-                            onValueChange = {
-                                dropAddress = it
-                                viewModel.setDropLocation(it)
-                            },
-                            label = { Text("Where to? (Destination)") },
-                            placeholder = { Text("Enter destination address") },
-                            leadingIcon = {
-                                Icon(Icons.Default.LocationOn, contentDescription = null, tint = Color(0xFFFA8520))
-                            },
-                            singleLine = true,
-                            modifier = Modifier.fillMaxWidth().testTag("drop_address_input"),
-                            shape = RoundedCornerShape(10.dp)
-                        )
                     }
                 }
             }
 
-            // Real Google Map with camera moving to exact standing location
+            // Search Bar: "Where to?" with auto-detected address as hint
             item {
-                Box(
+                Card(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .height(200.dp)
-                        .clip(RoundedCornerShape(14.dp))
-                        .background(Color(0xFFE2E8F0))
+                        .clickable { onNavigateToFleetMap() }
+                        .testTag("home_search_bar_card"),
+                    shape = RoundedCornerShape(20.dp),
+                    elevation = CardDefaults.cardElevation(defaultElevation = 8.dp),
+                    border = BorderStroke(0.5.dp, CardBorderColor),
+                    colors = CardDefaults.cardColors(containerColor = Color.White)
                 ) {
-                    GoogleMap(
-                        modifier = Modifier.fillMaxSize(),
-                        cameraPositionState = cameraPositionState,
-                        properties = MapProperties(
-                            isMyLocationEnabled = hasFinePermission && userLatLng != null
-                        ),
-                        uiSettings = MapUiSettings(
-                            zoomControlsEnabled = false,
-                            myLocationButtonEnabled = true
-                        )
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 16.dp, vertical = 14.dp),
+                        verticalAlignment = Alignment.CenterVertically
                     ) {
-                        userLatLng?.let { latLng ->
-                            Marker(
-                                state = MarkerState(position = latLng),
-                                title = "Your Exact Standing Location",
-                                snippet = pickupAddress
+                        Icon(
+                            imageVector = Icons.Default.Search,
+                            contentDescription = "Search",
+                            tint = BharatOrange,
+                            modifier = Modifier.size(24.dp)
+                        )
+                        Spacer(modifier = Modifier.width(12.dp))
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(
+                                text = "Where to?",
+                                style = MaterialTheme.typography.titleMedium.copy(
+                                    fontWeight = FontWeight.Bold,
+                                    fontSize = 16.sp,
+                                    color = BharatDarkBlue
+                                )
+                            )
+                            Text(
+                                text = if (currentAddress.isNotBlank()) currentAddress else "Where to? Search destination...",
+                                style = MaterialTheme.typography.bodySmall.copy(
+                                    color = Color.Gray,
+                                    fontSize = 12.sp
+                                ),
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis
                             )
                         }
-                    }
-
-                    if (userLatLng == null) {
-                        Box(
-                            modifier = Modifier
-                                .fillMaxSize()
-                                .background(Color(0x990F172A)),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Column(
-                                horizontalAlignment = Alignment.CenterHorizontally,
-                                verticalArrangement = Arrangement.spacedBy(8.dp)
-                            ) {
-                                if (isLocationLoading) {
-                                    CircularProgressIndicator(
-                                        color = Color(0xFFFA8520),
-                                        modifier = Modifier.size(28.dp)
-                                    )
-                                    Text(
-                                        text = "Detecting real standing GPS...",
-                                        color = Color.White,
-                                        fontSize = 12.sp,
-                                        fontWeight = FontWeight.Medium
-                                    )
-                                } else {
-                                    Icon(
-                                        imageVector = Icons.Default.LocationOff,
-                                        contentDescription = null,
-                                        tint = Color(0xFFFA8520),
-                                        modifier = Modifier.size(32.dp)
-                                    )
-                                    Text(
-                                        text = "Real device GPS required\nTap refresh icon to detect",
-                                        color = Color.White,
-                                        fontSize = 12.sp,
-                                        textAlign = TextAlign.Center
-                                    )
-                                }
-                            }
-                        }
+                        Icon(
+                            imageVector = Icons.AutoMirrored.Filled.ArrowForward,
+                            contentDescription = null,
+                            tint = BharatOrange,
+                            modifier = Modifier.size(20.dp)
+                        )
                     }
                 }
             }
 
-            // Available Fleet Header
+            // Below Search Bar: Row with Icon(my_location, color: Green) + Text "📍 Current Location - $currentAddress - Auto-detected" + Green dot pulse animation
+            item {
+                Card(
+                    modifier = Modifier.fillMaxWidth().testTag("current_location_autodetect_row"),
+                    shape = RoundedCornerShape(12.dp),
+                    colors = CardDefaults.cardColors(containerColor = BharatGreen.copy(alpha = 0.08f)),
+                    border = BorderStroke(1.dp, BharatGreen.copy(alpha = 0.35f))
+                ) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 12.dp, vertical = 10.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        // Green dot pulse animation
+                        Box(
+                            modifier = Modifier
+                                .size(10.dp)
+                                .clip(CircleShape)
+                                .background(BharatGreen.copy(alpha = pulseAlpha))
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Icon(
+                            imageVector = Icons.Default.MyLocation,
+                            contentDescription = "Current Location",
+                            tint = BharatGreen,
+                            modifier = Modifier.size(18.dp)
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(
+                            text = "📍 Current Location - ${if (currentAddress.isNotBlank()) currentAddress else "Detecting GPS..."} - Auto-detected",
+                            fontSize = 12.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = BharatDarkBlue,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                            modifier = Modifier.weight(1f)
+                        )
+                    }
+                }
+            }
+
+            // Top Tagline: "Bike & Toto now available Explore new rides"
+            item {
+                Surface(
+                    color = BharatOrange.copy(alpha = 0.10f),
+                    shape = RoundedCornerShape(12.dp),
+                    border = BorderStroke(1.dp, BharatOrange.copy(alpha = 0.35f)),
+                    modifier = Modifier.fillMaxWidth().testTag("bike_toto_tagline_banner")
+                ) {
+                    Row(
+                        modifier = Modifier.padding(horizontal = 14.dp, vertical = 10.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.ElectricRickshaw,
+                            contentDescription = null,
+                            tint = BharatGreen,
+                            modifier = Modifier.size(22.dp)
+                        )
+                        Spacer(modifier = Modifier.width(10.dp))
+                        Text(
+                            text = "Bike & Toto now available • Explore new rides",
+                            color = BharatDarkBlue,
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 13.sp
+                        )
+                    }
+                }
+            }
+
+            // Choose Service Header
             item {
                 Text(
-                    text = "Available Fleet",
+                    text = "Choose Service",
                     style = MaterialTheme.typography.titleMedium.copy(
-                        fontSize = 18.sp,
-                        fontWeight = FontWeight.Bold
+                        fontWeight = FontWeight.Bold,
+                        color = BharatDarkBlue,
+                        fontSize = 16.sp
                     )
                 )
             }
 
-            // 1. Toto (E-Rickshaw)
+            // Row 1: Bike Taxi (orange), Toto E-Rickshaw (green), Auto Rickshaw (orange)
             item {
-                FleetVehicleCard(
-                    title = "Toto (E-Rickshaw)",
-                    subtitle = "₹10 base + ₹5/km",
-                    icon = Icons.Default.ElectricRickshaw,
-                    isSelected = selectedFleetTitle == "Toto (E-Rickshaw)",
-                    onClick = {
-                        selectedFleetTitle = "Toto (E-Rickshaw)"
-                        Toast.makeText(context, "Selected Toto (E-Rickshaw) • ₹10 base + ₹5/km", Toast.LENGTH_SHORT).show()
-                    },
-                    testTag = "fleet_item_toto"
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(10.dp)
+                ) {
+                    HomeRideServiceCard(
+                        modifier = Modifier.weight(1f),
+                        title = "Bike Taxi",
+                        subtitle = "Fast Affordable",
+                        icon = Icons.Default.TwoWheeler,
+                        iconColor = BharatOrange,
+                        onClick = onNavigateToFleetMap
+                    )
+                    HomeRideServiceCard(
+                        modifier = Modifier.weight(1f),
+                        title = "Toto E-Rickshaw",
+                        subtitle = "Eco Shared",
+                        icon = Icons.Default.ElectricRickshaw,
+                        iconColor = BharatGreen,
+                        onClick = onNavigateToFleetMap
+                    )
+                    HomeRideServiceCard(
+                        modifier = Modifier.weight(1f),
+                        title = "Auto Rickshaw",
+                        subtitle = "Popular Quick",
+                        icon = Icons.Default.DirectionsTransit,
+                        iconColor = BharatOrange,
+                        onClick = onNavigateToFleetMap
+                    )
+                }
+            }
+
+            // Row 2: Mini Cab, Sedan, SUV
+            item {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(10.dp)
+                ) {
+                    HomeRideServiceCard(
+                        modifier = Modifier.weight(1f),
+                        title = "Mini Cab",
+                        subtitle = "Budget 4 seats",
+                        icon = Icons.Default.LocalTaxi,
+                        iconColor = BharatDarkBlue,
+                        onClick = onNavigateToFleetMap
+                    )
+                    HomeRideServiceCard(
+                        modifier = Modifier.weight(1f),
+                        title = "Sedan",
+                        subtitle = "Comfort 4 seats",
+                        icon = Icons.Default.DirectionsCar,
+                        iconColor = BharatDarkBlue,
+                        onClick = onNavigateToFleetMap
+                    )
+                    HomeRideServiceCard(
+                        modifier = Modifier.weight(1f),
+                        title = "SUV",
+                        subtitle = "Spacious 6 seats",
+                        icon = Icons.Default.AirportShuttle,
+                        iconColor = BharatDarkBlue,
+                        onClick = onNavigateToFleetMap
+                    )
+                }
+            }
+
+            // Section: Primary Service Category Cards (Rent A Car & Hire Driver)
+            item {
+                Text(
+                    text = "Core Ride & Rental Services",
+                    style = MaterialTheme.typography.titleMedium.copy(
+                        fontWeight = FontWeight.Bold,
+                        color = BharatDarkBlue,
+                        fontSize = 16.sp
+                    )
                 )
             }
 
-            // 2. Auto Rickshaw
+            // 1. Rent A Car Card (AC, SUV, Economy, Instant Booking)
             item {
-                FleetVehicleCard(
-                    title = "Auto Rickshaw",
-                    subtitle = "₹15 base + ₹7/km",
-                    icon = Icons.Default.TwoWheeler,
-                    isSelected = selectedFleetTitle == "Auto Rickshaw",
-                    onClick = {
-                        selectedFleetTitle = "Auto Rickshaw"
-                        Toast.makeText(context, "Selected Auto Rickshaw • ₹15 base + ₹7/km", Toast.LENGTH_SHORT).show()
-                    },
-                    testTag = "fleet_item_auto"
+                Card(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable { onNavigateToRentCar() }
+                        .testTag("home_rent_car_btn"),
+                    shape = RoundedCornerShape(20.dp),
+                    elevation = CardDefaults.cardElevation(defaultElevation = 8.dp),
+                    border = BorderStroke(0.5.dp, CardBorderColor),
+                    colors = CardDefaults.cardColors(containerColor = Color.White)
+                ) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(16.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .size(50.dp)
+                                .clip(CircleShape)
+                                .background(BharatOrange.copy(alpha = 0.15f)),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.DirectionsCar,
+                                contentDescription = null,
+                                tint = BharatOrange,
+                                modifier = Modifier.size(28.dp)
+                            )
+                        }
+                        Spacer(modifier = Modifier.width(14.dp))
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(
+                                text = "Rent A Car",
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 17.sp,
+                                color = BharatDarkBlue
+                            )
+                            Spacer(modifier = Modifier.height(2.dp))
+                            Text(
+                                text = "AC, SUV, Economy • Instant Booking",
+                                fontSize = 13.sp,
+                                color = Color.Gray
+                            )
+                        }
+                        Icon(
+                            imageVector = Icons.AutoMirrored.Filled.ArrowForwardIos,
+                            contentDescription = null,
+                            tint = Color.Gray,
+                            modifier = Modifier.size(16.dp)
+                        )
+                    }
+                }
+            }
+
+            // 2. Hire Driver Card (Hourly, Daily, Outstation)
+            item {
+                Card(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable { onNavigateToHireDriver() }
+                        .testTag("home_hire_driver_btn"),
+                    shape = RoundedCornerShape(20.dp),
+                    elevation = CardDefaults.cardElevation(defaultElevation = 8.dp),
+                    border = BorderStroke(0.5.dp, CardBorderColor),
+                    colors = CardDefaults.cardColors(containerColor = Color.White)
+                ) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(16.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .size(50.dp)
+                                .clip(CircleShape)
+                                .background(BharatGreen.copy(alpha = 0.15f)),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Person,
+                                contentDescription = null,
+                                tint = BharatGreen,
+                                modifier = Modifier.size(28.dp)
+                            )
+                        }
+                        Spacer(modifier = Modifier.width(14.dp))
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(
+                                text = "Hire Driver",
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 17.sp,
+                                color = BharatDarkBlue
+                            )
+                            Spacer(modifier = Modifier.height(2.dp))
+                            Text(
+                                text = "Hourly, Daily, Outstation • Verified Pros",
+                                fontSize = 13.sp,
+                                color = Color.Gray
+                            )
+                        }
+                        Icon(
+                            imageVector = Icons.AutoMirrored.Filled.ArrowForwardIos,
+                            contentDescription = null,
+                            tint = Color.Gray,
+                            modifier = Modifier.size(16.dp)
+                        )
+                    }
+                }
+            }
+
+            // Section: Quick Services: Airport Transfer, Outstation, Hourly Rental
+            item {
+                Text(
+                    text = "Quick Services",
+                    style = MaterialTheme.typography.titleMedium.copy(
+                        fontWeight = FontWeight.Bold,
+                        color = BharatDarkBlue,
+                        fontSize = 16.sp
+                    )
                 )
             }
 
-            // 3. Bike Taxi
             item {
-                FleetVehicleCard(
-                    title = "Bike Taxi",
-                    subtitle = "₹15 base + ₹6/km",
-                    icon = Icons.Default.TwoWheeler,
-                    isSelected = selectedFleetTitle == "Bike Taxi",
-                    onClick = {
-                        selectedFleetTitle = "Bike Taxi"
-                        Toast.makeText(context, "Selected Bike Taxi • ₹15 base + ₹6/km", Toast.LENGTH_SHORT).show()
-                    },
-                    testTag = "fleet_item_bike"
-                )
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(10.dp)
+                ) {
+                    QuickServiceChip(
+                        modifier = Modifier.weight(1f),
+                        title = "Airport Transfer",
+                        icon = Icons.Default.FlightTakeoff,
+                        onClick = onNavigateToFleetMap
+                    )
+                    QuickServiceChip(
+                        modifier = Modifier.weight(1f),
+                        title = "Outstation",
+                        icon = Icons.Default.Map,
+                        onClick = onNavigateToFleetMap
+                    )
+                    QuickServiceChip(
+                        modifier = Modifier.weight(1f),
+                        title = "Hourly Rental",
+                        icon = Icons.Default.Schedule,
+                        onClick = onNavigateToRentCar
+                    )
+                }
             }
 
-            // 4. Mini Cab (AC/Non-AC)
+            // Auto QR Instant Payment Quick Banner
             item {
-                FleetVehicleCard(
-                    title = "Mini Cab (AC/Non-AC)",
-                    subtitle = "₹40 base + ₹12/km",
-                    icon = Icons.Default.LocalTaxi,
-                    isSelected = selectedFleetTitle == "Mini Cab (AC/Non-AC)",
-                    onClick = {
-                        selectedFleetTitle = "Mini Cab (AC/Non-AC)"
-                        Toast.makeText(context, "Selected Mini Cab • ₹40 base + ₹12/km", Toast.LENGTH_SHORT).show()
-                    },
-                    testTag = "fleet_item_minicab"
-                )
+                Card(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable { onNavigateToAutoQr() }
+                        .testTag("home_instant_auto_qr_card"),
+                    shape = RoundedCornerShape(16.dp),
+                    colors = CardDefaults.cardColors(containerColor = Color.White),
+                    elevation = CardDefaults.cardElevation(defaultElevation = 6.dp),
+                    border = BorderStroke(1.dp, BharatOrange.copy(alpha = 0.4f))
+                ) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(14.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .size(46.dp)
+                                .clip(CircleShape)
+                                .background(BharatOrange.copy(alpha = 0.15f)),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Icon(Icons.Default.QrCodeScanner, contentDescription = null, tint = BharatOrange, modifier = Modifier.size(24.dp))
+                        }
+                        Spacer(modifier = Modifier.width(12.dp))
+                        Column(modifier = Modifier.weight(1f)) {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Text("Auto QR Payment", fontWeight = FontWeight.Bold, color = BharatDarkBlue, fontSize = 15.sp)
+                                Spacer(modifier = Modifier.width(6.dp))
+                                Surface(
+                                    color = BharatGreen.copy(alpha = 0.15f),
+                                    shape = RoundedCornerShape(4.dp)
+                                ) {
+                                    Text("05:00 Timer", color = BharatGreen, fontSize = 9.sp, fontWeight = FontWeight.Bold, modifier = Modifier.padding(horizontal = 4.dp, vertical = 1.dp))
+                                }
+                            }
+                            Text("Scan & Pay via GPay / PhonePe / Paytm", color = Color.Gray, fontSize = 11.sp)
+                        }
+                        Icon(Icons.AutoMirrored.Filled.ArrowForward, contentDescription = null, tint = BharatOrange, modifier = Modifier.size(18.dp))
+                    }
+                }
             }
 
-            // Instant Book Fleet Action (Premium Gradient)
+            // Book City Ride CTA Button
             item {
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .height(48.dp)
+                        .height(52.dp)
                         .clip(RoundedCornerShape(12.dp))
                         .background(
                             brush = Brush.horizontalGradient(
-                                listOf(Color(0xFFFA8520), Color(0xFF138808))
+                                listOf(BharatOrange, BharatGreen)
                             )
                         )
-                        .clickable {
-                            if (dropAddress.isNotBlank()) {
-                                Toast.makeText(context, "Searching nearby verified drivers for $selectedFleetTitle from $pickupAddress...", Toast.LENGTH_LONG).show()
-                            } else {
-                                Toast.makeText(context, "Please enter your destination drop location", Toast.LENGTH_SHORT).show()
-                            }
-                        }
-                        .testTag("book_fleet_ride_btn"),
+                        .clickable { onNavigateToFleetMap() }
+                        .testTag("home_book_city_ride_btn"),
                     contentAlignment = Alignment.Center
                 ) {
-                    Text(
-                        text = "Book Ride ($selectedFleetTitle)",
-                        color = Color.White,
-                        fontWeight = FontWeight.Bold,
-                        fontSize = 14.sp
-                    )
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Icon(Icons.Default.DirectionsCar, contentDescription = null, tint = Color.White)
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(
+                            text = "Book Ride Now (View 12 Vehicles)",
+                            color = Color.White,
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 15.sp
+                        )
+                    }
                 }
             }
 
             item {
-                Spacer(modifier = Modifier.height(16.dp))
+                Spacer(modifier = Modifier.height(70.dp))
             }
         }
     }
 }
 
 @Composable
-private fun FleetVehicleCard(
+private fun HomeRideServiceCard(
+    modifier: Modifier = Modifier,
     title: String,
     subtitle: String,
     icon: ImageVector,
-    isSelected: Boolean,
-    onClick: () -> Unit,
-    testTag: String
+    iconColor: Color,
+    onClick: () -> Unit
 ) {
     Card(
-        modifier = Modifier
-            .fillMaxWidth()
+        modifier = modifier
             .clickable { onClick() }
-            .testTag(testTag),
-        shape = RoundedCornerShape(20.dp),
-        colors = CardDefaults.cardColors(
-            containerColor = if (isSelected) Color(0xFFFA8520).copy(alpha = 0.08f) else MaterialTheme.colorScheme.surface
-        ),
-        elevation = CardDefaults.cardElevation(defaultElevation = 8.dp),
-        border = BorderStroke(0.5.dp, Color(0xFFE0E0E0))
+            .testTag("service_card_${title.replace(" ", "_").lowercase()}"),
+        shape = RoundedCornerShape(16.dp),
+        colors = CardDefaults.cardColors(containerColor = Color.White),
+        elevation = CardDefaults.cardElevation(defaultElevation = 6.dp),
+        border = BorderStroke(0.5.dp, CardBorderColor)
     ) {
-        Row(
+        Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(16.dp),
-            verticalAlignment = Alignment.CenterVertically
+                .padding(vertical = 12.dp, horizontal = 4.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.Center
         ) {
-            // Orange tinted Circle Avatar
             Box(
                 modifier = Modifier
-                    .size(46.dp)
+                    .size(42.dp)
                     .clip(CircleShape)
-                    .background(Color(0xFFFA8520).copy(alpha = 0.15f)),
+                    .background(iconColor.copy(alpha = 0.15f)),
                 contentAlignment = Alignment.Center
             ) {
                 Icon(
                     imageVector = icon,
                     contentDescription = title,
-                    tint = Color(0xFFFA8520),
-                    modifier = Modifier.size(26.dp)
+                    tint = iconColor,
+                    modifier = Modifier.size(24.dp)
                 )
             }
-
-            Spacer(modifier = Modifier.width(14.dp))
-
-            Column(modifier = Modifier.weight(1f)) {
-                Text(
-                    text = title,
-                    style = MaterialTheme.typography.titleMedium.copy(
-                        fontWeight = FontWeight.Bold,
-                        fontSize = 16.sp
-                    )
-                )
-                Spacer(modifier = Modifier.height(2.dp))
-                Text(
-                    text = subtitle,
-                    style = MaterialTheme.typography.bodyMedium.copy(
-                        color = Color.Gray,
-                        fontSize = 13.sp
-                    )
-                )
-            }
-
-            Icon(
-                imageVector = Icons.AutoMirrored.Filled.ArrowForwardIos,
-                contentDescription = null,
-                tint = Color.Gray,
-                modifier = Modifier.size(16.dp)
+            Spacer(modifier = Modifier.height(6.dp))
+            Text(
+                text = title,
+                fontSize = 12.sp,
+                fontWeight = FontWeight.Bold,
+                color = BharatDarkBlue,
+                maxLines = 1,
+                textAlign = TextAlign.Center
+            )
+            Spacer(modifier = Modifier.height(2.dp))
+            Text(
+                text = subtitle,
+                fontSize = 10.sp,
+                color = Color.Gray,
+                maxLines = 1,
+                fontWeight = FontWeight.Medium,
+                textAlign = TextAlign.Center
             )
         }
     }
 }
 
 @Composable
-fun rememberShimmerBrush(): Brush {
-    val shimmerColors = listOf(
-        Color(0xFFCBD5E1).copy(alpha = 0.6f),
-        Color.White.copy(alpha = 0.9f),
-        Color(0xFFCBD5E1).copy(alpha = 0.6f)
-    )
-    val transition = rememberInfiniteTransition(label = "shimmer_transition")
-    val translateAnim by transition.animateFloat(
-        initialValue = 0f,
-        targetValue = 1000f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(durationMillis = 1200, easing = FastOutSlowInEasing),
-            repeatMode = RepeatMode.Restart
-        ),
-        label = "shimmer_anim"
-    )
-    return Brush.linearGradient(
-        colors = shimmerColors,
-        start = androidx.compose.ui.geometry.Offset.Zero,
-        end = androidx.compose.ui.geometry.Offset(x = translateAnim, y = translateAnim)
-    )
+private fun QuickServiceChip(
+    modifier: Modifier = Modifier,
+    title: String,
+    icon: ImageVector,
+    onClick: () -> Unit
+) {
+    Card(
+        modifier = modifier.clickable { onClick() },
+        shape = RoundedCornerShape(14.dp),
+        colors = CardDefaults.cardColors(containerColor = Color.White),
+        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp),
+        border = BorderStroke(0.5.dp, CardBorderColor)
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(vertical = 12.dp, horizontal = 6.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.Center
+        ) {
+            Icon(
+                imageVector = icon,
+                contentDescription = title,
+                tint = BharatDarkBlue,
+                modifier = Modifier.size(24.dp)
+            )
+            Spacer(modifier = Modifier.height(6.dp))
+            Text(
+                text = title,
+                fontSize = 11.sp,
+                fontWeight = FontWeight.Bold,
+                color = BharatDarkBlue,
+                maxLines = 1
+            )
+        }
+    }
 }

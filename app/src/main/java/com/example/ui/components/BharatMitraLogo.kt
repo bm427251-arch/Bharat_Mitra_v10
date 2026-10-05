@@ -7,6 +7,7 @@ import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.layout.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -25,21 +26,52 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
 
+import androidx.compose.ui.platform.LocalContext
+
 // Official Palette matching the uploaded image exactly
+// India Map Orange #FF8C00 top, Green #2E8B57 bottom, Handshake Orange with 3 blue dots, Text BHARAT Orange MITRA Green
 val LogoNavyBackground = Color(0xFF0D1B68)
-val LogoSaffronOrange = Color(0xFFFA8520)
-val LogoIndianGreen = Color(0xFF0FA338)
+val LogoSaffronOrange = Color(0xFFFF8C00)
+val LogoIndianGreen = Color(0xFF2E8B57)
 val LogoAshokaBlue = Color(0xFF1E70DC)
 val LogoStrokeBlue = Color(0xFF0D1B68)
 
 /**
- * Custom-coded Bharat Mitra Official Logo rendered strictly via code (Canvas).
- * Accurately replicates the user's uploaded official reference:
- * 1. Deep royal navy blue background (#060A56).
- * 2. India Map contour: Top/North-West in Orange (#FA8520), East/South in Green (#0FA338).
- * 3. Central Handshake symbol with detailed fingers and Navy outline.
- * 4. Three Ashoka Blue dots arranged in triangle formation on the handshake palm.
- * 5. "BHARAT MITRA" text: BHARAT in Orange, MITRA in Green, both with crisp White border stroke.
+ * EXACT ASSET LOADER:
+ * Image.asset('assets/logo.png', width: 120, height: 40, fit: BoxFit.contain)
+ */
+@Composable
+fun BharatMitraHeaderLogo(
+    modifier: Modifier = Modifier,
+    width: Dp = 120.dp,
+    height: Dp = 40.dp
+) {
+    val context = LocalContext.current
+    val logoDrawableId = remember(context) {
+        context.resources.getIdentifier("logo", "drawable", context.packageName)
+    }
+
+    if (logoDrawableId != 0) {
+        androidx.compose.foundation.Image(
+            painter = androidx.compose.ui.res.painterResource(id = logoDrawableId),
+            contentDescription = "Bharat Mitra Official Logo",
+            modifier = modifier.size(width = width, height = height),
+            contentScale = ContentScale.Fit
+        )
+    } else {
+        BharatMitraLogo(
+            modifier = modifier,
+            size = height * 1.5f,
+            showText = true,
+            animateGlow = false
+        )
+    }
+}
+
+/**
+ * Official Bharat Mitra Logo:
+ * India Map Orange #FF8C00 top, Green #2E8B57 bottom,
+ * Handshake Orange with 3 blue dots, Text BHARAT Orange MITRA Green.
  */
 @Composable
 fun BharatMitraLogo(
@@ -49,6 +81,27 @@ fun BharatMitraLogo(
     animateGlow: Boolean = true,
     customLogoUri: String? = null
 ) {
+    val context = LocalContext.current
+    val logoDrawableId = remember(context) {
+        context.resources.getIdentifier("logo", "drawable", context.packageName)
+    }
+
+    if (logoDrawableId != 0 && customLogoUri == null) {
+        Column(
+            modifier = modifier,
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.Center
+        ) {
+            androidx.compose.foundation.Image(
+                painter = androidx.compose.ui.res.painterResource(id = logoDrawableId),
+                contentDescription = "Bharat Mitra Official Logo",
+                modifier = Modifier.size(size),
+                contentScale = ContentScale.Fit
+            )
+        }
+        return
+    }
+
     if (!customLogoUri.isNullOrBlank()) {
         Column(
             modifier = modifier,

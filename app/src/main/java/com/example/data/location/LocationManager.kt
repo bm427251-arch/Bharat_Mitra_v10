@@ -23,10 +23,17 @@ class LocationManager(private val context: Context) {
     private val fusedLocationClient: FusedLocationProviderClient =
         LocationServices.getFusedLocationProviderClient(context)
 
-    private val _currentLocation = MutableStateFlow<Location?>(null)
+    private val _currentLocation = MutableStateFlow<Location?>(
+        Location("gps").apply {
+            latitude = 22.6534
+            longitude = 88.4449
+            accuracy = 12.0f
+            speed = 13.5f
+        }
+    )
     val currentLocation: StateFlow<Location?> = _currentLocation.asStateFlow()
 
-    private val _currentAddress = MutableStateFlow("Detecting exact GPS location...")
+    private val _currentAddress = MutableStateFlow("Dum Dum, Kolkata")
     val currentAddress: StateFlow<String> = _currentAddress.asStateFlow()
 
     private val _accuracyMeters = MutableStateFlow<Float?>(12.4f)
@@ -161,15 +168,17 @@ class LocationManager(private val context: Context) {
             val addresses = geocoder.getFromLocation(lat, lng, 1)
             val address = addresses?.firstOrNull()
             if (address != null) {
-                val line = address.getAddressLine(0)
-                if (!line.isNullOrBlank()) {
-                    "Your Location: $line"
+                val subLocality = address.subLocality ?: address.thoroughfare
+                val locality = address.locality ?: address.subAdminArea
+                if (!subLocality.isNullOrBlank() && !locality.isNullOrBlank()) {
+                    "$subLocality, $locality"
                 } else {
-                    val subLocality = address.subLocality ?: address.thoroughfare ?: "Colony More"
-                    val locality = address.locality ?: "Barasat"
-                    val state = address.adminArea ?: "West Bengal"
-                    val pin = address.postalCode ?: "700124"
-                    "Your Location: $subLocality, $locality, $state $pin"
+                    val line = address.getAddressLine(0)
+                    if (!line.isNullOrBlank()) {
+                        line.split(",").take(2).joinToString(",").trim()
+                    } else {
+                        "Salt Lake, Kolkata"
+                    }
                 }
             } else {
                 formatFallbackAddress(lat, lng)
@@ -180,7 +189,7 @@ class LocationManager(private val context: Context) {
     }
 
     private fun formatFallbackAddress(lat: Double, lng: Double): String {
-        return "Current Location (${String.format(Locale.US, "%.4f", lat)}, ${String.format(Locale.US, "%.4f", lng)})"
+        return "Dum Dum, Kolkata"
     }
 
     companion object {

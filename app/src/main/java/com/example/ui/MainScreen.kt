@@ -1,12 +1,11 @@
 package com.example.ui
 
-import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.AccountBalanceWallet
 import androidx.compose.material.icons.filled.DirectionsCar
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Person
-import androidx.compose.material.icons.filled.Star
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -22,6 +21,7 @@ import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import com.example.ui.navigation.AppNavHost
 import com.example.ui.navigation.AppRoutes
+import com.example.ui.theme.BharatDarkBlue
 import com.example.viewmodel.MainViewModel
 
 data class BottomNavItem(
@@ -39,11 +39,12 @@ fun MainScreen(
     val navBackStackEntry by navController.currentBackStackEntryAsState()
     val currentRoute = navBackStackEntry?.destination?.route
 
+    // Bottom Nav: Home, Bookings, Wallet, Profile
     val navItems = listOf(
         BottomNavItem("Home", AppRoutes.ROUTE_HOME, Icons.Default.Home, "bottom_nav_home"),
-        BottomNavItem("Rent A Car", AppRoutes.ROUTE_RENT_A_CAR, Icons.Default.DirectionsCar, "bottom_nav_rent"),
-        BottomNavItem("Hire Driver", AppRoutes.ROUTE_HIRE_DRIVER, Icons.Default.Person, "bottom_nav_hire"),
-        BottomNavItem("Elite", AppRoutes.ROUTE_ELITE, Icons.Default.Star, "bottom_nav_elite")
+        BottomNavItem("Bookings", AppRoutes.ROUTE_AVAILABLE_FLEET, Icons.Default.DirectionsCar, "bottom_nav_bookings"),
+        BottomNavItem("Wallet", AppRoutes.ROUTE_PAYMENT_HISTORY, Icons.Default.AccountBalanceWallet, "bottom_nav_wallet"),
+        BottomNavItem("Profile", AppRoutes.ROUTE_CREATE_DRIVER, Icons.Default.Person, "bottom_nav_profile")
     )
 
     val isSplashScreen = currentRoute == AppRoutes.ROUTE_SPLASH || currentRoute == null
@@ -88,9 +89,9 @@ fun MainScreen(
                                 )
                             },
                             colors = NavigationBarItemDefaults.colors(
-                                selectedIconColor = Color(0xFF0D1B68),
-                                selectedTextColor = Color(0xFF0D1B68),
-                                indicatorColor = Color(0xFF0D1B68).copy(alpha = 0.12f),
+                                selectedIconColor = BharatDarkBlue,
+                                selectedTextColor = BharatDarkBlue,
+                                indicatorColor = BharatDarkBlue.copy(alpha = 0.12f),
                                 unselectedIconColor = Color.Gray,
                                 unselectedTextColor = Color.Gray
                             ),
