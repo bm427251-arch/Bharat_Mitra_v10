@@ -66,6 +66,7 @@ class _AvailableFleetMapScreenState extends State<AvailableFleetMapScreen> {
                   ),
                 );
               }).toList(),
+            ),
           ),
 
           // Nearby Landmark Suggestions Bar

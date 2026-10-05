@@ -79,7 +79,7 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
             : (place.thoroughfare?.isNotEmpty == true ? place.thoroughfare! : 'Dum Dum');
         String loc = place.locality?.isNotEmpty == true
             ? place.locality!
-            : (place.subAdminArea?.isNotEmpty == true ? place.subAdminArea! : 'Kolkata');
+            : (place.subAdministrativeArea?.isNotEmpty == true ? place.subAdministrativeArea! : 'Kolkata');
         setState(() {
           _currentLat = position.latitude;
           _currentLng = position.longitude;
