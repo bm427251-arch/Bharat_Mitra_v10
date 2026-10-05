@@ -84,3 +84,12 @@ data class SilentPushNotification(
     val timestamp: String = "Just now",
     val isRead: Boolean = false
 )
+
+data class NearbyLandmark(
+    val id: String,
+    val name: String,
+    val category: String,
+    val distance: String,
+    val subtext: String
+)
+

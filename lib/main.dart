@@ -1,8 +1,22 @@
-import 'dart:math' as math;
 import 'package:flutter/material.dart';
-import 'widgets/main_bottom_nav_fixed.dart';
+import 'screens/home_screen.dart';
+import 'screens/available_fleet_map_screen.dart';
+import 'screens/booking_confirmed_screen.dart';
+import 'screens/auto_qr_payment_screen.dart';
+import 'screens/ride_in_progress_screen.dart';
+import 'screens/payment_history_wallet_screen.dart';
+import 'screens/create_driver_profile_screen.dart';
+import 'screens/rent_a_car_screen.dart';
+import 'screens/rent_owner_form_screen.dart';
+import 'screens/hire_driver_screen.dart';
+import 'screens/hire_driver_form_screen.dart';
+import 'screens/rent_subscription_screen.dart';
+import 'screens/hire_driver_subscription_screen.dart';
+import 'screens/admin_dashboard_screen.dart';
+import 'screens/rating_screen.dart';
 
 void main() {
+  WidgetsFlutterBinding.ensureInitialized();
   runApp(const BharatMitraApp());
 }
 
@@ -15,262 +29,109 @@ class BharatMitraApp extends StatelessWidget {
       title: 'Bharat Mitra Official',
       debugShowCheckedModeBanner: false,
       theme: ThemeData(
-        colorScheme: ColorScheme.fromSeed(
-          seedColor: const Color(0xFFFA8520),
-          primary: const Color(0xFFFA8520),
-          secondary: const Color(0xFF0D1B68),
-        ),
         useMaterial3: true,
+        primaryColor: const Color(0xFF0D1B68),
+        scaffoldBackgroundColor: const Color(0xFFF8FAFC),
+        colorScheme: const ColorScheme.light(
+          primary: Color(0xFF0D1B68),
+          secondary: Color(0xFFFF8C00),
+          tertiary: Color(0xFF2E8B57),
+          surface: Colors.white,
+          background: Color(0xFFF8FAFC),
+        ),
+        appBarTheme: const AppBarTheme(
+          backgroundColor: Color(0xFF0D1B68),
+          foregroundColor: Colors.white,
+          elevation: 0,
+        ),
       ),
-      home: const MainBottomNavFixed(),
+      initialRoute: '/',
+      routes: {
+        '/': (context) => const MainNavigationHolder(),
+        '/fleet_map': (context) => const AvailableFleetMapScreen(),
+        '/booking_confirmed': (context) => const BookingConfirmedScreen(),
+        '/auto_qr_payment': (context) => const AutoQrPaymentScreen(),
+        '/ride_in_progress': (context) => const RideInProgressScreen(),
+        '/wallet': (context) => const PaymentHistoryWalletScreen(),
+        '/create_driver': (context) => const CreateDriverProfileScreen(),
+        '/rent_a_car': (context) => const RentACarScreen(),
+        '/rent_owner_form': (context) => const RentOwnerFormScreen(),
+        '/rent_subscription': (context) => const RentSubscriptionScreen(),
+        '/hire_driver': (context) => const HireDriverScreen(),
+        '/hire_driver_form': (context) => const HireDriverFormScreen(),
+        '/hire_driver_subscription': (context) => const HireDriverSubscriptionScreen(),
+        '/admin_dashboard': (context) => const AdminDashboardScreen(),
+        '/rating': (context) => const RatingScreen(),
+      },
     );
   }
 }
 
-class BharatMitraLogoWidget extends StatelessWidget {
-  final double width;
-  final double height;
+class MainNavigationHolder extends StatefulWidget {
+  const MainNavigationHolder({Key? key}) : super(key: key);
 
-  const BharatMitraLogoWidget({
-    Key? key,
-    this.width = 300,
-    this.height = 350,
-  }) : super(key: key);
+  @override
+  State<MainNavigationHolder> createState() => _MainNavigationHolderState();
+}
+
+class _MainNavigationHolderState extends State<MainNavigationHolder> {
+  int _currentIndex = 0;
+
+  final List<Widget> _screens = const [
+    HomeScreen(),
+    AvailableFleetMapScreen(),
+    PaymentHistoryWalletScreen(),
+    CreateDriverProfileScreen(),
+  ];
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      width: width,
-      height: height,
-      decoration: BoxDecoration(
-        color: const Color(0xFF0D1B68), // গাঢ় নীল ব্যাকগ্রাউন্ড
-        borderRadius: BorderRadius.circular(16),
-      ),
-      child: CustomPaint(
-        painter: BharatMitraLogoPainter(),
+    return Scaffold(
+      body: _screens[_currentIndex],
+      bottomNavigationBar: Container(
+        decoration: BoxDecoration(
+          color: Colors.white,
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.08),
+              blurRadius: 16,
+              offset: const Offset(0, -4),
+            ),
+          ],
+        ),
+        child: BottomNavigationBar(
+          currentIndex: _currentIndex,
+          onTap: (index) => setState(() => _currentIndex = index),
+          type: BottomNavigationBarType.fixed,
+          backgroundColor: Colors.white,
+          selectedItemColor: const Color(0xFF0D1B68),
+          unselectedItemColor: Colors.grey.shade500,
+          selectedLabelStyle: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12),
+          unselectedLabelStyle: const TextStyle(fontWeight: FontWeight.normal, fontSize: 12),
+          items: const [
+            BottomNavigationBarItem(
+              icon: Icon(Icons.home_outlined),
+              activeIcon: Icon(Icons.home, color: Color(0xFF0D1B68)),
+              label: 'Home',
+            ),
+            BottomNavigationBarItem(
+              icon: Icon(Icons.directions_car_outlined),
+              activeIcon: Icon(Icons.directions_car, color: Color(0xFF0D1B68)),
+              label: 'Bookings',
+            ),
+            BottomNavigationBarItem(
+              icon: Icon(Icons.account_balance_wallet_outlined),
+              activeIcon: Icon(Icons.account_balance_wallet, color: Color(0xFF0D1B68)),
+              label: 'Wallet',
+            ),
+            BottomNavigationBarItem(
+              icon: Icon(Icons.person_outline),
+              activeIcon: Icon(Icons.person, color: Color(0xFF0D1B68)),
+              label: 'Profile',
+            ),
+          ],
+        ),
       ),
     );
   }
-}
-
-class BharatMitraLogoPainter extends CustomPainter {
-  @override
-  void paint(Canvas canvas, Size size) {
-    final double w = size.width;
-    final double h = size.height;
-
-    final double scale = math.min(w / 300.0, h / 350.0);
-    final double ox = (w - (300.0 * scale)) / 2;
-    final double oy = (h - (350.0 * scale)) / 2;
-
-    // ১. ভারতের মানচিত্রের বর্ডার এবং কালারিং লজিক (উত্তর অংশ কমলা, দক্ষিণ অংশ সবুজ)
-    final paintOrange = Paint()
-      ..color = const Color(0xFFFA8520)
-      ..style = PaintingStyle.fill;
-
-    final paintGreen = Paint()
-      ..color = const Color(0xFF0FA338)
-      ..style = PaintingStyle.fill;
-
-    // ১.১ উত্তর ও পশ্চিম ভারত (কমলা অংশ)
-    final Path northWestMapPath = Path()
-      ..moveTo(ox + 125 * scale, oy + 42 * scale)
-      ..lineTo(ox + 130 * scale, oy + 36 * scale)
-      ..lineTo(ox + 135 * scale, oy + 38 * scale)
-      ..lineTo(ox + 143 * scale, oy + 44 * scale)
-      ..lineTo(ox + 148 * scale, oy + 52 * scale)
-      ..lineTo(ox + 156 * scale, oy + 46 * scale)
-      ..lineTo(ox + 155 * scale, oy + 58 * scale)
-      ..lineTo(ox + 150 * scale, oy + 66 * scale)
-      ..lineTo(ox + 153 * scale, oy + 76 * scale)
-      ..lineTo(ox + 148 * scale, oy + 84 * scale)
-      ..lineTo(ox + 160 * scale, oy + 92 * scale)
-      ..lineTo(ox + 150 * scale, oy + 104 * scale)
-      ..lineTo(ox + 135 * scale, oy + 115 * scale)
-      ..lineTo(ox + 124 * scale, oy + 128 * scale)
-      ..lineTo(ox + 110 * scale, oy + 142 * scale)
-      ..lineTo(ox + 106 * scale, oy + 152 * scale)
-      ..lineTo(ox + 104 * scale, oy + 165 * scale)
-      ..lineTo(ox + 98 * scale, oy + 160 * scale)
-      ..lineTo(ox + 88 * scale, oy + 155 * scale)
-      ..lineTo(ox + 80 * scale, oy + 148 * scale)
-      ..lineTo(ox + 84 * scale, oy + 140 * scale)
-      ..lineTo(ox + 74 * scale, oy + 138 * scale)
-      ..lineTo(ox + 76 * scale, oy + 130 * scale)
-      ..lineTo(ox + 86 * scale, oy + 128 * scale)
-      ..lineTo(ox + 90 * scale, oy + 114 * scale)
-      ..lineTo(ox + 96 * scale, oy + 110 * scale)
-      ..lineTo(ox + 93 * scale, oy + 98 * scale)
-      ..lineTo(ox + 100 * scale, oy + 94 * scale)
-      ..lineTo(ox + 116 * scale, oy + 90 * scale)
-      ..lineTo(ox + 120 * scale, oy + 78 * scale)
-      ..lineTo(ox + 118 * scale, oy + 68 * scale)
-      ..lineTo(ox + 122 * scale, oy + 54 * scale)
-      ..close();
-    canvas.drawPath(northWestMapPath, paintOrange);
-
-    // ১.২ পূর্ব ও দক্ষিণ ভারত (সবুজ অংশ)
-    final Path eastSouthMapPath = Path()
-      ..moveTo(ox + 150 * scale, oy + 104 * scale)
-      ..lineTo(ox + 164 * scale, oy + 110 * scale)
-      ..lineTo(ox + 180 * scale, oy + 116 * scale)
-      ..lineTo(ox + 196 * scale, oy + 114 * scale)
-      ..lineTo(ox + 204 * scale, oy + 106 * scale)
-      ..lineTo(ox + 218 * scale, oy + 95 * scale)
-      ..lineTo(ox + 226 * scale, oy + 98 * scale)
-      ..lineTo(ox + 242 * scale, oy + 100 * scale)
-      ..lineTo(ox + 252 * scale, oy + 112 * scale)
-      ..lineTo(ox + 242 * scale, oy + 120 * scale)
-      ..lineTo(ox + 236 * scale, oy + 130 * scale)
-      ..lineTo(ox + 238 * scale, oy + 144 * scale)
-      ..lineTo(ox + 232 * scale, oy + 150 * scale)
-      ..lineTo(ox + 222 * scale, oy + 140 * scale)
-      ..lineTo(ox + 214 * scale, oy + 145 * scale)
-      ..lineTo(ox + 208 * scale, oy + 134 * scale)
-      ..lineTo(ox + 204 * scale, oy + 146 * scale)
-      ..lineTo(ox + 205 * scale, oy + 160 * scale)
-      ..lineTo(ox + 198 * scale, oy + 172 * scale)
-      ..lineTo(ox + 186 * scale, oy + 190 * scale)
-      ..lineTo(ox + 170 * scale, oy + 210 * scale)
-      ..lineTo(ox + 154 * scale, oy + 230 * scale)
-      ..lineTo(ox + 148 * scale, oy + 245 * scale)
-      ..lineTo(ox + 140 * scale, oy + 256 * scale)
-      ..lineTo(ox + 132 * scale, oy + 266 * scale)
-      ..lineTo(ox + 126 * scale, oy + 256 * scale)
-      ..lineTo(ox + 120 * scale, oy + 240 * scale)
-      ..lineTo(ox + 115 * scale, oy + 215 * scale)
-      ..lineTo(ox + 110 * scale, oy + 185 * scale)
-      ..lineTo(ox + 104 * scale, oy + 165 * scale)
-      ..lineTo(ox + 106 * scale, oy + 152 * scale)
-      ..lineTo(ox + 110 * scale, oy + 142 * scale)
-      ..lineTo(ox + 124 * scale, oy + 128 * scale)
-      ..lineTo(ox + 135 * scale, oy + 115 * scale)
-      ..close();
-    canvas.drawPath(eastSouthMapPath, paintGreen);
-
-    // ২. মাঝখানের হ্যান্ডশেক ড্র করার লজিক
-    final paintHandshake = Paint()
-      ..color = const Color(0xFFFA8520)
-      ..style = PaintingStyle.fill;
-
-    final paintStrokeNavy = Paint()
-      ..color = const Color(0xFF0D1B68)
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 2.2 * scale
-      ..strokeCap = StrokeCap.round
-      ..strokeJoin = StrokeJoin.round;
-
-    final Path leftArm = Path()
-      ..moveTo(ox + 110 * scale, oy + 135 * scale)
-      ..lineTo(ox + 126 * scale, oy + 124 * scale)
-      ..lineTo(ox + 142 * scale, oy + 130 * scale)
-      ..lineTo(ox + 134 * scale, oy + 148 * scale)
-      ..lineTo(ox + 116 * scale, oy + 150 * scale)
-      ..close();
-    canvas.drawPath(leftArm, paintHandshake);
-    canvas.drawPath(leftArm, paintStrokeNavy);
-
-    final Path rightHand = Path()
-      ..moveTo(ox + 132 * scale, oy + 132 * scale)
-      ..lineTo(ox + 150 * scale, oy + 130 * scale)
-      ..lineTo(ox + 166 * scale, oy + 144 * scale)
-      ..lineTo(ox + 184 * scale, oy + 165 * scale)
-      ..lineTo(ox + 172 * scale, oy + 175 * scale)
-      ..lineTo(ox + 144 * scale, oy + 158 * scale)
-      ..lineTo(ox + 130 * scale, oy + 146 * scale)
-      ..close();
-    canvas.drawPath(rightHand, paintHandshake);
-    canvas.drawPath(rightHand, paintStrokeNavy);
-
-    // ৩. ৩টি নীল ডট
-    final paintBlueDot = Paint()
-      ..color = const Color(0xFF1E70DC)
-      ..style = PaintingStyle.fill;
-
-    final double dotRadius = 4.0 * scale;
-    final double px = ox + 152 * scale;
-    final double py = oy + 152 * scale;
-
-    canvas.drawCircle(Offset(px, py - (6 * scale)), dotRadius, paintBlueDot);
-    canvas.drawCircle(Offset(px - (5.5 * scale), py + (4 * scale)), dotRadius, paintBlueDot);
-    canvas.drawCircle(Offset(px + (5.5 * scale), py + (4 * scale)), dotRadius, paintBlueDot);
-
-    // ৪. টেক্সট
-    final double textY = oy + (300 * scale);
-    final double fontSize = 30 * scale;
-
-    final outlineSpan = TextSpan(
-      children: [
-        TextSpan(
-          text: 'BHARAT ',
-          style: TextStyle(
-            fontSize: fontSize,
-            fontWeight: FontWeight.w900,
-            letterSpacing: 2,
-            foreground: Paint()
-              ..style = PaintingStyle.stroke
-              ..strokeWidth = 5.0 * scale
-              ..strokeJoin = StrokeJoin.round
-              ..strokeCap = StrokeCap.round
-              ..color = Colors.white,
-          ),
-        ),
-        TextSpan(
-          text: 'MITRA',
-          style: TextStyle(
-            fontSize: fontSize,
-            fontWeight: FontWeight.w900,
-            letterSpacing: 2,
-            foreground: Paint()
-              ..style = PaintingStyle.stroke
-              ..strokeWidth = 5.0 * scale
-              ..strokeJoin = StrokeJoin.round
-              ..strokeCap = StrokeCap.round
-              ..color = Colors.white,
-          ),
-        ),
-      ],
-    );
-
-    final TextPainter outlinePainter = TextPainter(
-      text: outlineSpan,
-      textDirection: TextDirection.ltr,
-    )..layout();
-
-    final double textStartX = ox + (150 * scale) - (outlinePainter.width / 2);
-    outlinePainter.paint(canvas, Offset(textStartX, textY));
-
-    final fillSpan = TextSpan(
-      children: [
-        TextSpan(
-          text: 'BHARAT ',
-          style: TextStyle(
-            fontSize: fontSize,
-            fontWeight: FontWeight.w900,
-            letterSpacing: 2,
-            color: const Color(0xFFFA8520),
-          ),
-        ),
-        TextSpan(
-          text: 'MITRA',
-          style: TextStyle(
-            fontSize: fontSize,
-            fontWeight: FontWeight.w900,
-            letterSpacing: 2,
-            color: const Color(0xFF0FA338),
-          ),
-        ),
-      ],
-    );
-
-    final TextPainter fillPainter = TextPainter(
-      text: fillSpan,
-      textDirection: TextDirection.ltr,
-    )..layout();
-
-    fillPainter.paint(canvas, Offset(textStartX, textY));
-  }
-
-  @override
-  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }

@@ -43,6 +43,8 @@ fun AvailableFleetMapScreen(
     val context = LocalContext.current
     val fleetList by viewModel.availableFleet.collectAsState()
     val currentAddress by viewModel.currentAddress.collectAsState()
+    val selectedDestination by viewModel.selectedDestination.collectAsState()
+    val nearbyLandmarks by viewModel.nearbyLandmarks.collectAsState()
 
     var selectedFilter by remember { mutableStateOf("All Services") }
     var selectedFleetId by remember { mutableStateOf(fleetList.firstOrNull()?.id ?: "fl_sedan") }
@@ -116,6 +118,35 @@ fun AvailableFleetMapScreen(
                 }
             }
 
+            // Nearby Landmark Quick Suggestions Row
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .horizontalScroll(rememberScrollState())
+                    .background(Color(0xFFF1F5F9))
+                    .padding(horizontal = 14.dp, vertical = 6.dp),
+                horizontalArrangement = Arrangement.spacedBy(6.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text("Nearby: ", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = BharatDarkBlue)
+                nearbyLandmarks.forEach { landmark ->
+                    val isSel = selectedDestination == landmark.name
+                    SuggestionChip(
+                        onClick = { viewModel.selectDestination(landmark.name) },
+                        label = { Text("${landmark.name} (${landmark.distance})", fontSize = 11.sp, fontWeight = if (isSel) FontWeight.Bold else FontWeight.Normal) },
+                        colors = SuggestionChipDefaults.suggestionChipColors(
+                            containerColor = if (isSel) BharatOrange else Color.White,
+                            labelColor = if (isSel) Color.White else BharatDarkBlue
+                        ),
+                        border = SuggestionChipDefaults.suggestionChipBorder(
+                            enabled = true,
+                            borderColor = if (isSel) BharatOrange else Color.LightGray
+                        ),
+                        shape = RoundedCornerShape(16.dp)
+                    )
+                }
+            }
+
             // Interactive Map View with Kolkata Street Canvas
             Box(
                 modifier = Modifier
@@ -125,8 +156,8 @@ fun AvailableFleetMapScreen(
                     .testTag("fleet_interactive_map")
             ) {
                 InteractiveMapCanvas(
-                    pickupLocation = if (currentAddress.isNotBlank()) currentAddress else "Dum Dum, Kolkata",
-                    dropLocation = "Park Street / Exide Crossing, Kolkata",
+                    pickupLocation = if (currentAddress.isNotBlank()) currentAddress else "Current Live Location",
+                    dropLocation = selectedDestination ?: "Select Nearby Landmark",
                     isDropConfirmed = true
                 )
             }
@@ -277,9 +308,11 @@ fun AvailableFleetMapScreen(
                                 )
                             )
                             .clickable {
+                                val pickup = if (currentAddress.isNotBlank()) currentAddress else "Current Live Location"
+                                val drop = selectedDestination ?: "Nearby Landmark (${selectedItem?.name ?: "Ride"})"
                                 viewModel.confirmBooking(
-                                    pickup = if (currentAddress.isNotBlank()) currentAddress else "Dum Dum, Kolkata",
-                                    drop = "Park Street / Exide Crossing, Kolkata",
+                                    pickup = pickup,
+                                    drop = drop,
                                     fare = selectedItem?.price ?: 100
                                 )
                                 onConfirmBooking()

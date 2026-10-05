@@ -12,8 +12,10 @@ import androidx.compose.animation.core.*
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -56,6 +58,8 @@ fun HomeScreen(
     val currentAddress by viewModel.currentAddress.collectAsState()
     val walletBalance by viewModel.walletBalance.collectAsState()
     val isLocationPermissionGranted by viewModel.isLocationPermissionGranted.collectAsState()
+    val nearbyLandmarks by viewModel.nearbyLandmarks.collectAsState()
+    val selectedDestination by viewModel.selectedDestination.collectAsState()
 
     // Runtime Permission Launcher for Location
     val locationPermissionLauncher = rememberLauncherForActivityResult(
@@ -323,18 +327,19 @@ fun HomeScreen(
                         Spacer(modifier = Modifier.width(12.dp))
                         Column(modifier = Modifier.weight(1f)) {
                             Text(
-                                text = "Where to?",
+                                text = "Where to? (Pick landmark below)",
                                 style = MaterialTheme.typography.titleMedium.copy(
                                     fontWeight = FontWeight.Bold,
-                                    fontSize = 16.sp,
+                                    fontSize = 15.sp,
                                     color = BharatDarkBlue
                                 )
                             )
                             Text(
-                                text = if (currentAddress.isNotBlank()) currentAddress else "Where to? Search destination...",
+                                text = "Live Location: ${if (currentAddress.isNotBlank()) currentAddress else "Auto-detecting GPS..."}",
                                 style = MaterialTheme.typography.bodySmall.copy(
-                                    color = Color.Gray,
-                                    fontSize = 12.sp
+                                    color = BharatGreen,
+                                    fontWeight = FontWeight.SemiBold,
+                                    fontSize = 11.sp
                                 ),
                                 maxLines = 1,
                                 overflow = TextOverflow.Ellipsis
@@ -350,7 +355,7 @@ fun HomeScreen(
                 }
             }
 
-            // Below Search Bar: Row with Icon(my_location, color: Green) + Text "📍 Current Location - $currentAddress - Auto-detected" + Green dot pulse animation
+            // Below Search Bar: Row with Icon(my_location, color: Green) + Text "📍 Current Live Location - $currentAddress - Auto-detected" + Green dot pulse animation
             item {
                 Card(
                     modifier = Modifier.fillMaxWidth().testTag("current_location_autodetect_row"),
@@ -374,13 +379,13 @@ fun HomeScreen(
                         Spacer(modifier = Modifier.width(8.dp))
                         Icon(
                             imageVector = Icons.Default.MyLocation,
-                            contentDescription = "Current Location",
+                            contentDescription = "Current Live Location",
                             tint = BharatGreen,
                             modifier = Modifier.size(18.dp)
                         )
                         Spacer(modifier = Modifier.width(8.dp))
                         Text(
-                            text = "📍 Current Location - ${if (currentAddress.isNotBlank()) currentAddress else "Detecting GPS..."} - Auto-detected",
+                            text = "📍 Current Live Location: ${if (currentAddress.isNotBlank()) currentAddress else "Detecting GPS..."} • Live Auto-detected",
                             fontSize = 12.sp,
                             fontWeight = FontWeight.Bold,
                             color = BharatDarkBlue,
@@ -388,6 +393,138 @@ fun HomeScreen(
                             overflow = TextOverflow.Ellipsis,
                             modifier = Modifier.weight(1f)
                         )
+                    }
+                }
+            }
+
+            // Suggestions for Similar Nearby Landmarks
+            item {
+                Column(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Icon(
+                                imageVector = Icons.Default.NearMe,
+                                contentDescription = null,
+                                tint = BharatOrange,
+                                modifier = Modifier.size(18.dp)
+                            )
+                            Spacer(modifier = Modifier.width(6.dp))
+                            Text(
+                                text = "Nearby Similar Landmarks",
+                                style = MaterialTheme.typography.titleSmall.copy(
+                                    fontWeight = FontWeight.Bold,
+                                    color = BharatDarkBlue,
+                                    fontSize = 14.sp
+                                )
+                            )
+                        }
+                        Surface(
+                            color = BharatOrange.copy(alpha = 0.15f),
+                            shape = RoundedCornerShape(12.dp)
+                        ) {
+                            Text(
+                                text = "Near Live Location",
+                                fontSize = 10.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = BharatOrange,
+                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp)
+                            )
+                        }
+                    }
+
+                    // Horizontally scrollable landmark suggestion cards
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .horizontalScroll(rememberScrollState()),
+                        horizontalArrangement = Arrangement.spacedBy(10.dp)
+                    ) {
+                        nearbyLandmarks.forEach { landmark ->
+                            val landmarkIcon = when (landmark.category) {
+                                "Metro" -> Icons.Default.DirectionsSubway
+                                "Airport" -> Icons.Default.FlightTakeoff
+                                "IT Hub" -> Icons.Default.Business
+                                "Shopping" -> Icons.Default.LocalMall
+                                "Hospital" -> Icons.Default.LocalHospital
+                                "Rail Terminal" -> Icons.Default.Train
+                                else -> Icons.Default.Place
+                            }
+
+                            Card(
+                                modifier = Modifier
+                                    .width(210.dp)
+                                    .clickable {
+                                        viewModel.selectDestination(landmark.name)
+                                        Toast.makeText(context, "Selected landmark: ${landmark.name}", Toast.LENGTH_SHORT).show()
+                                        onNavigateToFleetMap()
+                                    }
+                                    .testTag("landmark_card_${landmark.id}"),
+                                shape = RoundedCornerShape(14.dp),
+                                colors = CardDefaults.cardColors(containerColor = Color.White),
+                                elevation = CardDefaults.cardElevation(defaultElevation = 4.dp),
+                                border = BorderStroke(0.5.dp, CardBorderColor)
+                            ) {
+                                Column(
+                                    modifier = Modifier.padding(12.dp)
+                                ) {
+                                    Row(
+                                        modifier = Modifier.fillMaxWidth(),
+                                        horizontalArrangement = Arrangement.SpaceBetween,
+                                        verticalAlignment = Alignment.CenterVertically
+                                    ) {
+                                        Box(
+                                            modifier = Modifier
+                                                .size(32.dp)
+                                                .clip(CircleShape)
+                                                .background(BharatOrange.copy(alpha = 0.15f)),
+                                            contentAlignment = Alignment.Center
+                                        ) {
+                                            Icon(
+                                                imageVector = landmarkIcon,
+                                                contentDescription = landmark.name,
+                                                tint = BharatOrange,
+                                                modifier = Modifier.size(18.dp)
+                                            )
+                                        }
+                                        Surface(
+                                            color = BharatGreen.copy(alpha = 0.12f),
+                                            shape = RoundedCornerShape(6.dp)
+                                        ) {
+                                            Text(
+                                                text = landmark.distance,
+                                                color = BharatGreen,
+                                                fontWeight = FontWeight.Bold,
+                                                fontSize = 10.sp,
+                                                modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                                            )
+                                        }
+                                    }
+                                    Spacer(modifier = Modifier.height(8.dp))
+                                    Text(
+                                        text = landmark.name,
+                                        fontWeight = FontWeight.Bold,
+                                        fontSize = 13.sp,
+                                        color = BharatDarkBlue,
+                                        maxLines = 1,
+                                        overflow = TextOverflow.Ellipsis
+                                    )
+                                    Text(
+                                        text = landmark.subtext,
+                                        fontSize = 10.sp,
+                                        color = Color.Gray,
+                                        maxLines = 1,
+                                        overflow = TextOverflow.Ellipsis
+                                    )
+                                }
+                            }
+                        }
                     }
                 }
             }

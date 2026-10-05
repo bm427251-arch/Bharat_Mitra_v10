@@ -140,6 +140,28 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     private val _isHireDriverSubscribed = MutableStateFlow(false)
     val isHireDriverSubscribed: StateFlow<Boolean> = _isHireDriverSubscribed.asStateFlow()
 
+    // Nearby Landmark Suggestions
+    private val _nearbyLandmarks = MutableStateFlow(
+        listOf(
+            NearbyLandmark("lm_1", "Dum Dum Metro Station", "Metro", "350m away", "North-South Corridor Line"),
+            NearbyLandmark("lm_2", "Airport Terminal 2 Gate 3", "Airport", "1.8 km away", "NSCB International Airport"),
+            NearbyLandmark("lm_3", "Salt Lake Sector V", "IT Hub", "3.2 km away", "College More / Karunamoyee"),
+            NearbyLandmark("lm_4", "City Centre 1 Mall", "Shopping", "2.4 km away", "DC Block, Salt Lake"),
+            NearbyLandmark("lm_5", "RG Kar Medical College", "Hospital", "2.1 km away", "Belgachia Road, Shyambazar"),
+            NearbyLandmark("lm_6", "Exide Crossing", "Junction", "4.5 km away", "Rabindra Sadan / AJC Bose Rd"),
+            NearbyLandmark("lm_7", "Howrah Railway Station", "Rail Terminal", "6.8 km away", "Station Road, Howrah"),
+            NearbyLandmark("lm_8", "Eco Park Gate 2", "Park", "4.1 km away", "Major Arterial Road, New Town")
+        )
+    )
+    val nearbyLandmarks: StateFlow<List<NearbyLandmark>> = _nearbyLandmarks.asStateFlow()
+
+    private val _selectedDestination = MutableStateFlow<String?>(null)
+    val selectedDestination: StateFlow<String?> = _selectedDestination.asStateFlow()
+
+    fun selectDestination(dest: String) {
+        _selectedDestination.value = dest
+    }
+
     // Trigger silent push notification to admin within 7 seconds (NO SOUND, BADGE ONLY)
     fun scheduleSilentAdminNotification(formType: String, applicantName: String) {
         viewModelScope.launch {
