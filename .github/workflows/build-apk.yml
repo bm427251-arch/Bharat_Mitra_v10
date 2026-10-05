@@ -15,6 +15,10 @@ jobs:
         with:
           flutter-version: '3.22.0'
       - run: flutter create . --platforms=android --project-name=bharat_mitra_v10
+      - name: Fix Gradle 8.4
+        run: |
+          sed -i 's/gradle-7.5-all.zip/gradle-8.4-all.zip/' android/gradle/wrapper/gradle-wrapper.properties
+          cat android/gradle/wrapper/gradle-wrapper.properties
       - run: flutter pub get
       - run: flutter build apk --release --no-tree-shake-icons
       - uses: actions/upload-artifact@v4
