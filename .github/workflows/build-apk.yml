@@ -19,6 +19,7 @@ jobs:
 
       - name: Setup Android & Gradle Configuration
         run: |
+          yes | sdkmanager --licenses || true
           if [ ! -f android/gradlew ]; then
             flutter create . --platforms=android --project-name=bharat_mitra_v10
           fi
