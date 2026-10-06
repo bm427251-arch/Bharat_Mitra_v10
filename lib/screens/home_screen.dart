@@ -160,16 +160,13 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
         elevation: 0,
         title: Row(
           children: [
-            // Tappable Logo -> Direct Navigate to Admin Dashboard
+            // SILENT ADMIN ENTRY: Logo Tap & LongPress -> Direct Silent Open Admin Login
             GestureDetector(
-              onTap: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(builder: (_) => const AdminDashboardScreen()),
-                );
-              },
-              child: Tooltip(
-                message: 'Tap to Open Admin Dashboard',
+              behavior: HitTestBehavior.opaque,
+              onTap: () => Navigator.pushNamed(context, '/admin_login'),
+              onLongPress: () => Navigator.pushNamed(context, '/admin_login'),
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 4),
                 child: Image.asset(
                   'assets/logo.png',
                   width: 120,
@@ -223,11 +220,8 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
           // Direct Admin Icon Button
           IconButton(
             icon: const Icon(Icons.admin_panel_settings, color: Colors.white),
-            tooltip: 'Admin Dashboard',
-            onPressed: () => Navigator.push(
-              context,
-              MaterialPageRoute(builder: (_) => const AdminDashboardScreen()),
-            ),
+            tooltip: 'Admin Portal',
+            onPressed: () => Navigator.pushNamed(context, '/admin_login'),
           ),
         ],
       ),

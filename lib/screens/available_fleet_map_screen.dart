@@ -136,7 +136,11 @@ class _AvailableFleetMapScreenState extends State<AvailableFleetMapScreen> with 
                 Text('Live Status & Past Trips', style: TextStyle(fontSize: 11, color: Color(0xFFFFB366))),
               ],
             ),
-            Image.asset('assets/logo.png', width: 90, height: 30, fit: BoxFit.contain),
+            GestureDetector(
+              behavior: HitTestBehavior.opaque,
+              onLongPress: () => Navigator.pushNamed(context, '/admin_login'),
+              child: Image.asset('assets/logo.png', width: 90, height: 30, fit: BoxFit.contain),
+            ),
           ],
         ),
         bottom: TabBar(

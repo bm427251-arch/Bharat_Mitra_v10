@@ -13,6 +13,7 @@ import 'screens/hire_driver_form_screen.dart';
 import 'screens/rent_subscription_screen.dart';
 import 'screens/hire_driver_subscription_screen.dart';
 import 'screens/admin_dashboard_screen.dart';
+import 'screens/admin_login_screen.dart';
 import 'screens/rating_screen.dart';
 
 void main() {
@@ -60,6 +61,8 @@ class BharatMitraApp extends StatelessWidget {
         '/hire_driver': (context) => const HireDriverScreen(),
         '/hire_driver_form': (context) => const HireDriverFormScreen(),
         '/hire_driver_subscription': (context) => const HireDriverSubscriptionScreen(),
+        '/admin': (context) => const AdminLoginScreen(),
+        '/admin_login': (context) => const AdminLoginScreen(),
         '/admin_dashboard': (context) => const AdminDashboardScreen(),
         '/rating': (context) => const RatingScreen(),
       },

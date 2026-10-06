@@ -13,7 +13,11 @@ class BookingConfirmedScreen extends StatelessWidget {
         actions: [
           Padding(
             padding: const EdgeInsets.only(right: 12),
-            child: Image.asset('assets/logo.png', width: 90, height: 30, fit: BoxFit.contain),
+            child: GestureDetector(
+              behavior: HitTestBehavior.opaque,
+              onLongPress: () => Navigator.pushNamed(context, '/admin_login'),
+              child: Image.asset('assets/logo.png', width: 90, height: 30, fit: BoxFit.contain),
+            ),
           ),
         ],
       ),
