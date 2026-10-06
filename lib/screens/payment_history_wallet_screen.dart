@@ -12,7 +12,7 @@ class _PaymentHistoryWalletScreenState extends State<PaymentHistoryWalletScreen>
   String _selectedFilter = 'All';
 
   final List<Map<String, dynamic>> _transactions = [
-    {'title': 'Ride Payment - Sedan', 'amt': '₹100', 'type': 'Paid', 'mode': 'UPI / Auto QR', 'time': 'Today, 10:30 AM'},
+    {'title': 'Ride Payment - Sedan', 'amt': '₹100', 'type': 'Paid', 'mode': 'UPI', 'time': 'Today, 10:30 AM'},
     {'title': 'Wallet Top-up via Razorpay', 'amt': '+₹500', 'type': 'Added', 'mode': 'Razorpay / GPay', 'time': 'Yesterday, 04:15 PM'},
     {'title': 'Ride Payment - Auto Rickshaw', 'amt': '₹60', 'type': 'Paid', 'mode': 'Wallet', 'time': '02 Oct, 08:45 AM'},
     {'title': 'Wallet Top-up via UPI', 'amt': '+₹1000', 'type': 'Added', 'mode': 'UPI', 'time': '28 Sep, 02:10 PM'},

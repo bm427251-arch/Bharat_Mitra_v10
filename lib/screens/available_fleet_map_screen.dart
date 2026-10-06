@@ -302,7 +302,7 @@ class _AvailableFleetMapScreenState extends State<AvailableFleetMapScreen> with 
                 const SizedBox(height: 4),
                 Text('${r['time']} • ${r['driver']}', style: TextStyle(fontSize: 11, color: Colors.grey.shade600)),
                 const SizedBox(height: 8),
-                Text('📍 ${r['pickup']} ➔ ${r['drop']}', style: const TextStyle(fontSize: 12, color: Colors.black89)),
+                Text('📍 ${r['pickup']} ➔ ${r['drop']}', style: const TextStyle(fontSize: 12, color: Colors.black87)),
                 const SizedBox(height: 10),
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,

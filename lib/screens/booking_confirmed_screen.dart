@@ -163,7 +163,7 @@ class BookingConfirmedScreen extends StatelessWidget {
                   child: OutlinedButton.icon(
                     onPressed: () => Navigator.pushNamed(context, '/auto_qr_payment'),
                     icon: const Icon(Icons.qr_code, color: Color(0xFF0D1B68)),
-                    label: const Text('Pay Now via Auto QR (₹100)', style: TextStyle(fontWeight: FontWeight.bold, color: Color(0xFF0D1B68), fontSize: 14)),
+                    label: const Text('Pay Now via UPI (₹100)', style: TextStyle(fontWeight: FontWeight.bold, color: Color(0xFF0D1B68), fontSize: 14)),
                     style: OutlinedButton.styleFrom(
                       side: const BorderSide(color: Color(0xFF0D1B68), width: 1.5),
                       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),

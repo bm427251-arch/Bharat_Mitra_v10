@@ -53,8 +53,8 @@ class _AutoQrPaymentScreenState extends State<AutoQrPaymentScreen> {
               crossAxisAlignment: CrossAxisAlignment.start,
               mainAxisSize: MainAxisSize.min,
               children: [
-                Text('Auto QR Payment', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: Colors.white)),
-                Text('Auto QR Generated Secure Payment', style: TextStyle(fontSize: 11, color: Color(0xFFFFB366))),
+                Text('Instant UPI Payment', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: Colors.white)),
+                Text('Scan to Pay Securely', style: TextStyle(fontSize: 11, color: Color(0xFFFFB366))),
               ],
             ),
             Image.asset('assets/logo.png', width: 90, height: 30, fit: BoxFit.contain),
@@ -199,7 +199,7 @@ class _AutoQrPaymentScreenState extends State<AutoQrPaymentScreen> {
             ),
             const SizedBox(height: 10),
             const Text(
-              'Auto generate QR every payment • 100% Secure',
+              'Instant Dynamic UPI • 100% Secure',
               style: TextStyle(fontSize: 11, color: Colors.grey),
             ),
           ],
