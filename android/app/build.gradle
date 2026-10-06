@@ -23,9 +23,9 @@ if (flutterVersionName == null) {
 }
 
 android {
-    namespace "com.bharatmitra.bharat_mitra_v10"
-    compileSdkVersion 34
-    ndkVersion "25.1.8937393"
+    namespace 'com.example.app'
+    compileSdk 34
+    ndkVersion "27.0.12077973"
 
     compileOptions {
         sourceCompatibility JavaVersion.VERSION_17
@@ -41,9 +41,9 @@ android {
     }
 
     defaultConfig {
-        applicationId "com.bharatmitra.bharat_mitra_v10"
-        minSdkVersion 23
-        targetSdkVersion 34
+        applicationId "com.example.app"
+        minSdk 23
+        targetSdk 34
         versionCode flutterVersionCode.toInteger()
         versionName flutterVersionName
         multiDexEnabled true
@@ -63,6 +63,6 @@ flutter {
 }
 
 dependencies {
-    implementation "org.jetbrains.kotlin:kotlin-stdlib:1.9.0"
+    implementation "org.jetbrains.kotlin:kotlin-stdlib:1.9.22"
     implementation "androidx.multidex:multidex:2.0.1"
 }
