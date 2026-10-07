@@ -23,7 +23,7 @@ if (flutterVersionName == null) {
 }
 
 android {
-    namespace 'com.example.app'
+    namespace 'com.example.bharat_mitra_v10'
     compileSdk 34
     ndkVersion "27.3.13750724"
 
@@ -41,7 +41,7 @@ android {
     }
 
     defaultConfig {
-        applicationId "com.example.app"
+        applicationId "com.example.bharat_mitra_v10"
         minSdk 21
         targetSdk 34
         versionCode flutterVersionCode.toInteger()
