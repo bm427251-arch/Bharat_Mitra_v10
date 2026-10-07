@@ -36,7 +36,14 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                 Text('INTERNAL USE ONLY • SECURE DESK', style: TextStyle(fontSize: 10, color: Color(0xFFFFB366), fontWeight: FontWeight.bold)),
               ],
             ),
-            Image.asset('assets/logo.png', width: 90, height: 30, fit: BoxFit.contain),
+            // SAFE LOGO WITH errorBuilder - will not crash
+            Image.asset('assets/logo.png', width: 90, height: 30, fit: BoxFit.contain,
+              errorBuilder: (c,e,s) => Container(
+                width: 90, height: 30,
+                decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(6)),
+                child: const Icon(Icons.directions_car, color: Color(0xFF0D1B68)),
+              ),
+            ),
           ],
         ),
       ),
@@ -45,7 +52,6 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Top Overview Stats (Drivers 24, Verified 22, Pending 2, Blocked 1)
             Row(
               children: [
                 Expanded(child: _buildStatCard('Total Drivers', '$_driversCount', Icons.people, const Color(0xFF0D1B68))),
@@ -59,14 +65,12 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
             ),
             const SizedBox(height: 16),
 
-            // Internal Earnings & 15% Commission Split (ONLY HERE - NEVER IN CUSTOMER UI)
             Container(
               width: double.infinity,
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
                 color: const Color(0xFF0D1B68),
                 borderRadius: BorderRadius.circular(16),
-                boxShadow: [BoxShadow(color: Colors.black12, blurRadius: 8)],
               ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -110,7 +114,76 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
             ),
             const SizedBox(height: 16),
 
-            // Silent Push Notifications Queue (7 seconds silent alert)
+            // --- NEW: APP BRANDING & LOGO CHANGE OPTION ---
+            Container(
+              padding: const EdgeInsets.all(14),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: const Color(0xFF0D1B68).withOpacity(0.3)),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: const [
+                      Icon(Icons.palette, color: Color(0xFF0D1B68), size: 20),
+                      SizedBox(width: 8),
+                      Text('App Branding & Logo', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: Color(0xFF0D1B68))),
+                    ],
+                  ),
+                  const SizedBox(height: 12),
+                  Row(
+                    children: [
+                      Image.asset('assets/logo.png', width: 50, height: 50,
+                        errorBuilder: (c,e,s) => const Icon(Icons.image, size: 40, color: Color(0xFF0D1B68)),
+                      ),
+                      const SizedBox(width: 12),
+                      const Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text('Current Logo: assets/logo.png', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
+                            Text('Replace file in GitHub to change logo', style: TextStyle(fontSize: 10, color: Colors.grey)),
+                          ],
+                        ),
+                      ),
+                      ElevatedButton(
+                        style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF0D1B68)),
+                        onPressed: () {
+                          // SAFE - Only shows instruction, no picker = no crash
+                        },
+                        child: const Text('Change', style: TextStyle(color: Colors.white, fontSize: 11)),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 10),
+                  SizedBox(
+                    width: double.infinity,
+                    child: OutlinedButton.icon(
+                      icon: const Icon(Icons.info_outline, size: 14),
+                      label: const Text('How to Change Logo', style: TextStyle(fontSize: 11)),
+                      onPressed: () {
+                        showDialog(
+                          context: context,
+                          builder: (ctx) => AlertDialog(
+                            title: const Text('Logo Change Guide', style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold)),
+                            content: const Text(
+                              '1. GitHub এ যান\n2. assets/logo.png File টা Delete করুন\n3. নতুন Logo টা Upload করুন নাম দিন logo.png\n4. Commit করুন\n5. Actions থেকে নতুন APK Build করুন\n\nLogo Size: 512x512 PNG Recommended',
+                              style: TextStyle(fontSize: 12),
+                            ),
+                            actions: [TextButton(onPressed: ()=> Navigator.pop(ctx), child: const Text('OK'))],
+                          ),
+                        );
+                      },
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 16),
+            // --- END LOGO SECTION ---
+
             Container(
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
@@ -143,7 +216,6 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
             ),
             const SizedBox(height: 16),
 
-            // Driver Verification & Block Controls
             const Text('Driver Partner Management', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15, color: Color(0xFF0D1B68))),
             const SizedBox(height: 10),
 
@@ -182,14 +254,9 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                               _pendingCount--;
                               _pendingDrivers.removeAt(index);
                             });
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(content: Text('Approved ${d['name']}!')),
-                            );
+                            ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Approved ${d['name']}!')));
                           },
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: const Color(0xFF2E8B57),
-                            padding: const EdgeInsets.symmetric(horizontal: 10),
-                          ),
+                          style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF2E8B57), padding: const EdgeInsets.symmetric(horizontal: 10)),
                           child: const Text('Approve', style: TextStyle(color: Colors.white, fontSize: 11)),
                         ),
                         const SizedBox(width: 4),
@@ -200,15 +267,9 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                               _pendingCount--;
                               _pendingDrivers.removeAt(index);
                             });
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(content: Text('Blocked ${d['name']} from network.')),
-                            );
+                            ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Blocked ${d['name']} from network.')));
                           },
-                          style: OutlinedButton.styleFrom(
-                            foregroundColor: Colors.red,
-                            side: const BorderSide(color: Colors.red),
-                            padding: const EdgeInsets.symmetric(horizontal: 10),
-                          ),
+                          style: OutlinedButton.styleFrom(foregroundColor: Colors.red, side: const BorderSide(color: Colors.red), padding: const EdgeInsets.symmetric(horizontal: 10)),
                           child: const Text('Block', style: TextStyle(fontSize: 11)),
                         ),
                       ],
