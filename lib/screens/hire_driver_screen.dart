@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../utils/logo_helper.dart';
 
 class HireDriverScreen extends StatelessWidget {
   const HireDriverScreen({Key? key}) : super(key: key);
@@ -19,7 +20,7 @@ class HireDriverScreen extends StatelessWidget {
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
             const Text('Hire Verified Drivers', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: Colors.white)),
-            Image.asset('assets/logo.png', width: 90, height: 30, fit: BoxFit.contain),
+            const AppLogo(width: 90, height: 30, fit: BoxFit.contain),
           ],
         ),
       ),

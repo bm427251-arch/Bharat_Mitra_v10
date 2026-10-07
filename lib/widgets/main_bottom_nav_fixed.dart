@@ -13,10 +13,10 @@ class MainBottomNavFixed extends StatefulWidget {
 class _MainBottomNavFixedState extends State<MainBottomNavFixed> {
   int _index = 0;
   final _pages = const [
-    HomeScreen(),
+    HomeScreen(showBottomNav: false),
     RentACarScreen(),
     HireDriverScreen(),
-    PaymentHistoryWalletScreen(),
+    RentACarScreen(),
   ];
 
   @override
@@ -36,9 +36,9 @@ class _MainBottomNavFixedState extends State<MainBottomNavFixed> {
           unselectedItemColor: Colors.grey,
           items: const [
             BottomNavigationBarItem(icon: Icon(Icons.home), label: 'Home'),
-            BottomNavigationBarItem(icon: Icon(Icons.car_rental), label: 'Rent A Car'),
+            BottomNavigationBarItem(icon: Icon(Icons.directions_car), label: 'Rent Car'),
             BottomNavigationBarItem(icon: Icon(Icons.person), label: 'Hire Driver'),
-            BottomNavigationBarItem(icon: Icon(Icons.account_balance_wallet), label: 'Wallet'),
+            BottomNavigationBarItem(icon: Icon(Icons.shield), label: 'Elite'),
           ],
         ),
       ),

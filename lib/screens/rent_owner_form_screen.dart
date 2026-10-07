@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../utils/logo_helper.dart';
 
 class RentOwnerFormScreen extends StatefulWidget {
   const RentOwnerFormScreen({Key? key}) : super(key: key);
@@ -58,7 +59,7 @@ class _RentOwnerFormScreenState extends State<RentOwnerFormScreen> {
                 Text('Any Vehicle Can Be Added', style: TextStyle(fontSize: 11, color: Color(0xFFFFB366))),
               ],
             ),
-            Image.asset('assets/logo.png', width: 90, height: 30, fit: BoxFit.contain),
+            const AppLogo(width: 90, height: 30, fit: BoxFit.contain),
           ],
         ),
       ),

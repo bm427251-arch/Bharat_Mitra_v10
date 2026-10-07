@@ -13,7 +13,13 @@ class RentSubscriptionScreen extends StatelessWidget {
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
             const Text('Rent Owner Subscription', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: Colors.white)),
-            Image.asset('assets/logo.png', width: 90, height: 30, fit: BoxFit.contain),
+            Image.asset(
+              'assets/logo.png',
+              width: 90,
+              height: 30,
+              fit: BoxFit.contain,
+              errorBuilder: (c, e, s) => const Icon(Icons.car_rental, color: Colors.white, size: 24),
+            ),
           ],
         ),
       ),

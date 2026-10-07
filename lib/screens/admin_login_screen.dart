@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../utils/logo_helper.dart';
 import 'admin_dashboard_screen.dart';
 
 class AdminLoginScreen extends StatefulWidget {
@@ -55,7 +56,7 @@ class _AdminLoginScreenState extends State<AdminLoginScreen> {
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
               // Logo
-              Image.asset('assets/logo.png', width: 140, height: 48, fit: BoxFit.contain),
+              const AppLogo(width: 140, height: 48, fit: BoxFit.contain),
               const SizedBox(height: 16),
               const Text(
                 'Bharat Mitra Control Center',

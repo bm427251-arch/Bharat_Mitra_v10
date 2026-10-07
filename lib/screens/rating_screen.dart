@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../utils/logo_helper.dart';
 
 class RatingScreen extends StatefulWidget {
   const RatingScreen({Key? key}) : super(key: key);
@@ -47,7 +48,7 @@ class _RatingScreenState extends State<RatingScreen> with SingleTickerProviderSt
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
             const Text('Trip Feedback & Rating', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: Colors.white)),
-            Image.asset('assets/logo.png', width: 90, height: 30, fit: BoxFit.contain),
+            const AppLogo(width: 90, height: 30, fit: BoxFit.contain),
           ],
         ),
         bottom: TabBar(

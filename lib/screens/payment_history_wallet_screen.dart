@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../utils/logo_helper.dart';
 
 class PaymentHistoryWalletScreen extends StatefulWidget {
   const PaymentHistoryWalletScreen({Key? key}) : super(key: key);
@@ -93,7 +94,7 @@ class _PaymentHistoryWalletScreenState extends State<PaymentHistoryWalletScreen>
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
             const Text('Payment History & Wallet', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: Colors.white)),
-            Image.asset('assets/logo.png', width: 90, height: 30, fit: BoxFit.contain),
+            const AppLogo(width: 90, height: 30, fit: BoxFit.contain),
           ],
         ),
       ),

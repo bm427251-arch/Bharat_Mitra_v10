@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../utils/logo_helper.dart';
 
 class AvailableFleetMapScreen extends StatefulWidget {
   const AvailableFleetMapScreen({Key? key}) : super(key: key);
@@ -139,7 +140,7 @@ class _AvailableFleetMapScreenState extends State<AvailableFleetMapScreen> with 
             GestureDetector(
               behavior: HitTestBehavior.opaque,
               onLongPress: () => Navigator.pushNamed(context, '/admin_login'),
-              child: Image.asset('assets/logo.png', width: 90, height: 30, fit: BoxFit.contain),
+              child: const AppLogo(width: 90, height: 30, fit: BoxFit.contain),
             ),
           ],
         ),

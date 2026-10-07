@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
+import '../utils/logo_helper.dart';
 
 class AutoQrPaymentScreen extends StatefulWidget {
   const AutoQrPaymentScreen({Key? key}) : super(key: key);
@@ -57,7 +58,7 @@ class _AutoQrPaymentScreenState extends State<AutoQrPaymentScreen> {
                 Text('Scan to Pay Securely', style: TextStyle(fontSize: 11, color: Color(0xFFFFB366))),
               ],
             ),
-            Image.asset('assets/logo.png', width: 90, height: 30, fit: BoxFit.contain),
+            const AppLogo(width: 90, height: 30, fit: BoxFit.contain),
           ],
         ),
       ),

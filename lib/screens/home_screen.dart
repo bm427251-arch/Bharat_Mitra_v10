@@ -2,11 +2,13 @@ import 'package:flutter/material.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:geocoding/geocoding.dart';
 import 'package:permission_handler/permission_handler.dart';
+import '../utils/logo_helper.dart';
 import 'admin_dashboard_screen.dart';
 import 'create_driver_profile_screen.dart';
 
 class HomeScreen extends StatefulWidget {
-  const HomeScreen({Key? key}) : super(key: key);
+  final bool showBottomNav;
+  const HomeScreen({Key? key, this.showBottomNav = true}) : super(key: key);
 
   @override
   State<HomeScreen> createState() => _HomeScreenState();
@@ -17,9 +19,19 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
   double _currentLat = 22.6841;
   double _currentLng = 88.4512;
   bool _isPermissionDenied = false;
+  bool _isLoading = false;
+  int _bottomNavIndex = 0;
   String _selectedService = 'Sedan';
   late AnimationController _pulseController;
   late Animation<double> _pulseAnimation;
+
+  void _loadData() {
+    if (mounted) {
+      setState(() {
+        _isLoading = false;
+      });
+    }
+  }
 
   // Drop Location & Autocomplete State
   final TextEditingController _dropController = TextEditingController();
@@ -103,27 +115,75 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
   }
 
   Future<void> _initLocation() async {
+    // Non-blocking timeout safety: guarantee app proceeds after 5 seconds even if permission dialog hangs
+    Future.delayed(const Duration(seconds: 5), () {
+      if (mounted) {
+        _loadData();
+      }
+    });
+
     try {
-      LocationPermission permission = await Geolocator.checkPermission();
+      // 1. Wrap permission_handler request in try-catch with timeout (web preview throws error)
+      try {
+        await Permission.location.request().timeout(
+          const Duration(seconds: 4),
+          onTimeout: () => PermissionStatus.denied,
+        );
+      } catch (_) {
+        // web preview or platform exception handled gracefully
+      }
+
+      // 2. Wrap Geolocator in try-catch with timeout
+      LocationPermission permission = await Geolocator.checkPermission().timeout(
+        const Duration(seconds: 3),
+        onTimeout: () => LocationPermission.denied,
+      );
+
       if (permission == LocationPermission.denied) {
-        permission = await Geolocator.requestPermission();
+        try {
+          permission = await Geolocator.requestPermission().timeout(
+            const Duration(seconds: 4),
+            onTimeout: () => LocationPermission.denied,
+          );
+        } catch (_) {
+          permission = LocationPermission.denied;
+        }
         if (permission == LocationPermission.denied) {
           if (mounted) setState(() => _isPermissionDenied = true);
+          _loadData();
           return;
         }
       }
+
       if (permission == LocationPermission.deniedForever) {
         if (mounted) setState(() => _isPermissionDenied = true);
+        _loadData();
         return;
       }
 
+      // 3. Get position with timeout & default fallback
       Position position = await Geolocator.getCurrentPosition(
-        desiredAccuracy: LocationAccuracy.high,
+        desiredAccuracy: LocationAccuracy.medium,
+      ).timeout(
+        const Duration(seconds: 4),
+        onTimeout: () => Position(
+          latitude: 22.6841,
+          longitude: 88.4512,
+          timestamp: DateTime.now(),
+          accuracy: 0.0,
+          altitude: 0.0,
+          heading: 0.0,
+          speed: 0.0,
+          speedAccuracy: 0.0,
+        ),
       );
 
       List<Placemark> placemarks = await placemarkFromCoordinates(
         position.latitude,
         position.longitude,
+      ).timeout(
+        const Duration(seconds: 3),
+        onTimeout: () => [],
       );
 
       if (placemarks.isNotEmpty && mounted) {
@@ -148,6 +208,8 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
           _isPermissionDenied = false;
         });
       }
+    } finally {
+      _loadData();
     }
   }
 
@@ -167,8 +229,7 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
               onLongPress: () => Navigator.pushNamed(context, '/admin_login'),
               child: Container(
                 padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 4),
-                child: Image.asset(
-                  'assets/logo.png',
+                child: const AppLogo(
                   width: 120,
                   height: 40,
                   fit: BoxFit.contain,
@@ -811,6 +872,60 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
           ],
         ),
       ),
+      bottomNavigationBar: widget.showBottomNav
+          ? Container(
+              decoration: BoxDecoration(
+                color: Colors.white,
+                border: const Border(top: BorderSide(color: Colors.black12, width: 0.8)),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.06),
+                    blurRadius: 10,
+                    offset: const Offset(0, -3),
+                  ),
+                ],
+              ),
+              child: BottomNavigationBar(
+                currentIndex: _bottomNavIndex,
+                onTap: (index) {
+                  setState(() => _bottomNavIndex = index);
+                  if (index == 0) {
+                    // Stay on Home
+                  } else if (index == 1) {
+                    Navigator.pushNamed(context, '/rent_a_car');
+                  } else if (index == 2) {
+                    Navigator.pushNamed(context, '/hire_driver');
+                  } else if (index == 3) {
+                    Navigator.pushNamed(context, '/rent_a_car');
+                  }
+                },
+                type: BottomNavigationBarType.fixed,
+                backgroundColor: Colors.white,
+                selectedItemColor: const Color(0xFF0D1B68),
+                unselectedItemColor: Colors.grey.shade600,
+                selectedLabelStyle: const TextStyle(fontWeight: FontWeight.bold, fontSize: 11),
+                unselectedLabelStyle: const TextStyle(fontWeight: FontWeight.normal, fontSize: 11),
+                items: const [
+                  BottomNavigationBarItem(
+                    icon: Icon(Icons.home),
+                    label: 'Home',
+                  ),
+                  BottomNavigationBarItem(
+                    icon: Icon(Icons.directions_car),
+                    label: 'Rent Car',
+                  ),
+                  BottomNavigationBarItem(
+                    icon: Icon(Icons.person),
+                    label: 'Hire Driver',
+                  ),
+                  BottomNavigationBarItem(
+                    icon: Icon(Icons.shield),
+                    label: 'Elite',
+                  ),
+                ],
+              ),
+            )
+          : null,
     );
   }
 

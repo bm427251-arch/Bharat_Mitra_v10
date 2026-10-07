@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../utils/logo_helper.dart';
 
 class BookingConfirmedScreen extends StatelessWidget {
   const BookingConfirmedScreen({Key? key}) : super(key: key);
@@ -16,7 +17,7 @@ class BookingConfirmedScreen extends StatelessWidget {
             child: GestureDetector(
               behavior: HitTestBehavior.opaque,
               onLongPress: () => Navigator.pushNamed(context, '/admin_login'),
-              child: Image.asset('assets/logo.png', width: 90, height: 30, fit: BoxFit.contain),
+              child: const AppLogo(width: 90, height: 30, fit: BoxFit.contain),
             ),
           ),
         ],

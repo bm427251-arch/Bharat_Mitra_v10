@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../utils/logo_helper.dart';
 
 class RentACarScreen extends StatelessWidget {
   const RentACarScreen({Key? key}) : super(key: key);
@@ -20,7 +21,7 @@ class RentACarScreen extends StatelessWidget {
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
             const Text('Rent A Car Catalog', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: Colors.white)),
-            Image.asset('assets/logo.png', width: 90, height: 30, fit: BoxFit.contain),
+            const AppLogo(width: 90, height: 30, fit: BoxFit.contain),
           ],
         ),
       ),

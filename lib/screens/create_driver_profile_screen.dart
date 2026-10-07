@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../utils/logo_helper.dart';
 
 class CreateDriverProfileScreen extends StatelessWidget {
   final int initialTabIndex;
@@ -26,7 +27,7 @@ class CreateDriverProfileScreen extends StatelessWidget {
                   Text('Join Bharat Mitra Mobility', style: TextStyle(fontSize: 11, color: Color(0xFFFFB366))),
                 ],
               ),
-              Image.asset('assets/logo.png', width: 90, height: 30, fit: BoxFit.contain),
+              const AppLogo(width: 90, height: 30, fit: BoxFit.contain),
             ],
           ),
           bottom: const TabBar(

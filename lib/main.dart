@@ -15,9 +15,11 @@ import 'screens/hire_driver_subscription_screen.dart';
 import 'screens/admin_dashboard_screen.dart';
 import 'screens/admin_login_screen.dart';
 import 'screens/rating_screen.dart';
+import 'utils/logo_helper.dart';
 
-void main() {
+void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  await LogoHelper.init();
   runApp(const BharatMitraApp());
 }
 
@@ -81,10 +83,10 @@ class _MainNavigationHolderState extends State<MainNavigationHolder> {
   int _currentIndex = 0;
 
   final List<Widget> _screens = const [
-    HomeScreen(),
-    AvailableFleetMapScreen(),
-    PaymentHistoryWalletScreen(),
-    CreateDriverProfileScreen(),
+    HomeScreen(showBottomNav: false),
+    RentACarScreen(),
+    HireDriverScreen(),
+    RentACarScreen(),
   ];
 
   @override
@@ -94,6 +96,7 @@ class _MainNavigationHolderState extends State<MainNavigationHolder> {
       bottomNavigationBar: Container(
         decoration: BoxDecoration(
           color: Colors.white,
+          border: const Border(top: BorderSide(color: Colors.black12, width: 0.8)),
           boxShadow: [
             BoxShadow(
               color: Colors.black.withOpacity(0.08),
@@ -108,29 +111,25 @@ class _MainNavigationHolderState extends State<MainNavigationHolder> {
           type: BottomNavigationBarType.fixed,
           backgroundColor: Colors.white,
           selectedItemColor: const Color(0xFF0D1B68),
-          unselectedItemColor: Colors.grey.shade500,
-          selectedLabelStyle: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12),
-          unselectedLabelStyle: const TextStyle(fontWeight: FontWeight.normal, fontSize: 12),
+          unselectedItemColor: Colors.grey.shade600,
+          selectedLabelStyle: const TextStyle(fontWeight: FontWeight.bold, fontSize: 11),
+          unselectedLabelStyle: const TextStyle(fontWeight: FontWeight.normal, fontSize: 11),
           items: const [
             BottomNavigationBarItem(
-              icon: Icon(Icons.home_outlined),
-              activeIcon: Icon(Icons.home, color: Color(0xFF0D1B68)),
+              icon: Icon(Icons.home),
               label: 'Home',
             ),
             BottomNavigationBarItem(
-              icon: Icon(Icons.directions_car_outlined),
-              activeIcon: Icon(Icons.directions_car, color: Color(0xFF0D1B68)),
-              label: 'Bookings',
+              icon: Icon(Icons.directions_car),
+              label: 'Rent Car',
             ),
             BottomNavigationBarItem(
-              icon: Icon(Icons.account_balance_wallet_outlined),
-              activeIcon: Icon(Icons.account_balance_wallet, color: Color(0xFF0D1B68)),
-              label: 'Wallet',
+              icon: Icon(Icons.person),
+              label: 'Hire Driver',
             ),
             BottomNavigationBarItem(
-              icon: Icon(Icons.person_outline),
-              activeIcon: Icon(Icons.person, color: Color(0xFF0D1B68)),
-              label: 'Profile',
+              icon: Icon(Icons.shield),
+              label: 'Elite',
             ),
           ],
         ),

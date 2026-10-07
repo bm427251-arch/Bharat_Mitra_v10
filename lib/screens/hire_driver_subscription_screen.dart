@@ -13,7 +13,13 @@ class HireDriverSubscriptionScreen extends StatelessWidget {
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
             const Text('Driver Partner Activation', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: Colors.white)),
-            Image.asset('assets/logo.png', width: 90, height: 30, fit: BoxFit.contain),
+            Image.asset(
+              'assets/logo.png',
+              width: 90,
+              height: 30,
+              fit: BoxFit.contain,
+              errorBuilder: (c, e, s) => const Icon(Icons.directions_car, color: Colors.white, size: 24),
+            ),
           ],
         ),
       ),
