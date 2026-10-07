@@ -21,12 +21,13 @@ jobs:
         run: |
           yes | sdkmanager --licenses || true
           if [ ! -f android/gradlew ]; then
-            flutter create . --platforms=android --project-name=bharat_mitra_v10
+            cp gradlew android/gradlew || true
           fi
-          sed -i 's/version "8.3.2"/version "8.4.0"/' android/settings.gradle || true
-          sed -i 's/version "1.9.0"/version "1.9.22"/' android/settings.gradle || true
-          sed -i 's/gradle-[0-9.]\+-[a-z]\+\.zip/gradle-8.6-all.zip/' android/gradle/wrapper/gradle-wrapper.properties || true
+          if [ ! -f android/gradle/wrapper/gradle-wrapper.jar ]; then
+            cp gradle/wrapper/gradle-wrapper.jar android/gradle/wrapper/gradle-wrapper.jar || true
+          fi
           chmod +x android/gradlew || true
+          chmod +x gradlew || true
 
       - run: flutter clean
       - run: flutter pub get
