@@ -47,7 +47,7 @@ fun SplashScreen(
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(BharatDarkBlue)
+            .background(Color(0xFF08080C))
             .testTag("splash_screen_view"),
         contentAlignment = Alignment.Center
     ) {
@@ -56,7 +56,7 @@ fun SplashScreen(
             verticalArrangement = Arrangement.Center,
             modifier = Modifier.padding(24.dp)
         ) {
-            // Logo center: India Map with Orange Green handshake & BHARAT MITRA text
+            // Logo center: 3D circular emblem with orange backlight glow
             Box(
                 modifier = Modifier
                     .scale(scale)
@@ -65,20 +65,20 @@ fun SplashScreen(
             ) {
                 BharatMitraLogo(
                     size = 230.dp,
-                    showText = true,
+                    showText = false,
                     animateGlow = true
                 )
             }
 
-            Spacer(modifier = Modifier.height(24.dp))
+            Spacer(modifier = Modifier.height(28.dp))
 
             Text(
                 text = "BHARAT MITRA",
                 style = MaterialTheme.typography.headlineMedium.copy(
                     color = Color.White,
                     fontWeight = FontWeight.Black,
-                    letterSpacing = 2.sp,
-                    fontSize = 24.sp
+                    letterSpacing = 2.5.sp,
+                    fontSize = 26.sp
                 )
             )
 

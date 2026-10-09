@@ -181,27 +181,6 @@ fun HomeScreen(
                 },
                 colors = TopAppBarDefaults.topAppBarColors(containerColor = BharatDarkBlue)
             )
-        },
-        floatingActionButton = {
-            // Fast profile creation for drivers
-            FloatingActionButton(
-                onClick = onNavigateToCreateDriver,
-                containerColor = BharatGreen,
-                contentColor = Color.White,
-                shape = RoundedCornerShape(16.dp),
-                modifier = Modifier
-                    .padding(bottom = 12.dp)
-                    .testTag("home_create_driver_fab")
-            ) {
-                Row(
-                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Icon(Icons.Default.Add, contentDescription = null)
-                    Spacer(modifier = Modifier.width(6.dp))
-                    Text("Driver Partner", fontWeight = FontWeight.Bold)
-                }
-            }
         }
     ) { innerPadding ->
         LazyColumn(
@@ -558,10 +537,10 @@ fun HomeScreen(
                 }
             }
 
-            // Choose Service Header
+            // All Services Dashboard Section
             item {
                 Text(
-                    text = "Choose Service",
+                    text = "All Services",
                     style = MaterialTheme.typography.titleMedium.copy(
                         fontWeight = FontWeight.Bold,
                         color = BharatDarkBlue,
@@ -632,6 +611,31 @@ fun HomeScreen(
                         icon = Icons.Default.AirportShuttle,
                         iconColor = BharatDarkBlue,
                         onClick = onNavigateToFleetMap
+                    )
+                }
+            }
+
+            // Row 3: Parcel, Wallet
+            item {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(10.dp)
+                ) {
+                    HomeRideServiceCard(
+                        modifier = Modifier.weight(1f),
+                        title = "Parcel",
+                        subtitle = "Send Courier",
+                        icon = Icons.Default.Inventory2,
+                        iconColor = BharatOrange,
+                        onClick = onNavigateToFleetMap
+                    )
+                    HomeRideServiceCard(
+                        modifier = Modifier.weight(1f),
+                        title = "Wallet",
+                        subtitle = "Add & Pay",
+                        icon = Icons.Default.AccountBalanceWallet,
+                        iconColor = BharatGreen,
+                        onClick = onNavigateToWallet
                     )
                 }
             }

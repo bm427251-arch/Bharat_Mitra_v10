@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'screens/splash_screen.dart';
 import 'screens/home_screen.dart';
 import 'screens/available_fleet_map_screen.dart';
 import 'screens/booking_confirmed_screen.dart';
@@ -48,9 +49,11 @@ class BharatMitraApp extends StatelessWidget {
           elevation: 0,
         ),
       ),
-      initialRoute: '/',
+      initialRoute: '/splash',
       routes: {
+        '/splash': (context) => const SplashScreen(),
         '/': (context) => const MainNavigationHolder(),
+        '/home': (context) => const MainNavigationHolder(),
         '/fleet_map': (context) => const AvailableFleetMapScreen(),
         '/booking_confirmed': (context) => const BookingConfirmedScreen(),
         '/auto_qr_payment': (context) => const AutoQrPaymentScreen(),

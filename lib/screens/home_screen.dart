@@ -4,7 +4,6 @@ import 'package:geocoding/geocoding.dart';
 import 'package:permission_handler/permission_handler.dart';
 import '../utils/logo_helper.dart';
 import 'admin_dashboard_screen.dart';
-import 'create_driver_profile_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   final bool showBottomNav;
@@ -566,97 +565,135 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
 
             const SizedBox(height: 18),
 
-            // VEHICLE LIST - SHOWN ONLY AFTER USER SELECTS DROP LOCATION
-            if (_isDropSelected) ...[
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  const Text(
-                    'Where to? Choose Service',
-                    style: TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.bold,
-                      color: Color(0xFF0D1B68),
-                    ),
+            // ALL SERVICES DASHBOARD SECTION (Below Search Bar & Live Map)
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                const Text(
+                  'All Services',
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                    color: Color(0xFF0D1B68),
                   ),
+                ),
+                if (_isDropSelected)
                   Text(
                     'To: $_selectedDropLocation',
                     style: const TextStyle(fontSize: 11, color: Color(0xFFFF8C00), fontWeight: FontWeight.bold),
                   ),
-                ],
-              ),
-              const SizedBox(height: 12),
+              ],
+            ),
+            const SizedBox(height: 12),
 
-              // 6 SERVICES IN 2 ROWS (Row 1: Bike, Toto, Auto | Row 2: Mini, Sedan, SUV)
-              Row(
-                children: [
-                  Expanded(
-                    child: _buildServiceCard(
-                      title: 'Bike Taxi',
-                      desc: 'Fast Affordable',
-                      fare: '₹40',
-                      icon: Icons.two_wheeler,
-                      color: const Color(0xFFFF8C00),
-                    ),
+            // Row 1: Bike, Toto, Auto
+            Row(
+              children: [
+                Expanded(
+                  child: _buildServiceCard(
+                    title: 'Bike Taxi',
+                    desc: 'Fast Affordable',
+                    fare: '₹40',
+                    icon: Icons.two_wheeler,
+                    color: const Color(0xFFFF8C00),
                   ),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: _buildServiceCard(
-                      title: 'Toto E-Rickshaw',
-                      desc: 'Eco Shared',
-                      fare: '₹30',
-                      icon: Icons.electric_rickshaw,
-                      color: const Color(0xFF2E8B57),
-                    ),
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: _buildServiceCard(
+                    title: 'Toto E-Rickshaw',
+                    desc: 'Eco Shared',
+                    fare: '₹30',
+                    icon: Icons.electric_rickshaw,
+                    color: const Color(0xFF2E8B57),
                   ),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: _buildServiceCard(
-                      title: 'Auto Rickshaw',
-                      desc: 'Popular Quick',
-                      fare: '₹60',
-                      icon: Icons.directions_transit,
-                      color: const Color(0xFFFF8C00),
-                    ),
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: _buildServiceCard(
+                    title: 'Auto Rickshaw',
+                    desc: 'Popular Quick',
+                    fare: '₹60',
+                    icon: Icons.directions_transit,
+                    color: const Color(0xFFFF8C00),
                   ),
-                ],
-              ),
-              const SizedBox(height: 8),
-              Row(
-                children: [
-                  Expanded(
-                    child: _buildServiceCard(
-                      title: 'Mini Cab',
-                      desc: 'Budget 4 seats',
-                      fare: '₹80',
-                      icon: Icons.local_taxi,
-                      color: const Color(0xFF0D1B68),
-                    ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 8),
+
+            // Row 2: Mini Cab, Sedan, SUV
+            Row(
+              children: [
+                Expanded(
+                  child: _buildServiceCard(
+                    title: 'Mini Cab',
+                    desc: 'Budget 4 seats',
+                    fare: '₹80',
+                    icon: Icons.local_taxi,
+                    color: const Color(0xFF0D1B68),
                   ),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: _buildServiceCard(
-                      title: 'Sedan',
-                      desc: 'Comfort 4 seats',
-                      fare: '₹100',
-                      icon: Icons.directions_car,
-                      color: const Color(0xFF0D1B68),
-                    ),
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: _buildServiceCard(
+                    title: 'Sedan',
+                    desc: 'Comfort 4 seats',
+                    fare: '₹100',
+                    icon: Icons.directions_car,
+                    color: const Color(0xFF0D1B68),
                   ),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: _buildServiceCard(
-                      title: 'SUV',
-                      desc: 'Spacious 6 seats',
-                      fare: '₹150',
-                      icon: Icons.airport_shuttle,
-                      color: const Color(0xFF0D1B68),
-                    ),
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: _buildServiceCard(
+                    title: 'SUV',
+                    desc: 'Spacious 6 seats',
+                    fare: '₹150',
+                    icon: Icons.airport_shuttle,
+                    color: const Color(0xFF0D1B68),
                   ),
-                ],
-              ),
-              const SizedBox(height: 18),
-            ],
+                ),
+              ],
+            ),
+            const SizedBox(height: 8),
+
+            // Row 3: Parcel, Wallet
+            Row(
+              children: [
+                Expanded(
+                  child: _buildServiceCard(
+                    title: 'Parcel',
+                    desc: 'Fast Courier',
+                    fare: '₹50',
+                    icon: Icons.inventory_2,
+                    color: const Color(0xFFFF8C00),
+                    onCustomTap: () {
+                      setState(() => _selectedService = 'Parcel');
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content: Text('Parcel Delivery selected. Fast doorstep courier service.'),
+                          backgroundColor: Color(0xFF0D1B68),
+                          duration: Duration(seconds: 2),
+                        ),
+                      );
+                    },
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: _buildServiceCard(
+                    title: 'Wallet',
+                    desc: 'Add & Pay',
+                    fare: '₹1,200',
+                    icon: Icons.account_balance_wallet,
+                    color: const Color(0xFF2E8B57),
+                    onCustomTap: () => Navigator.pushNamed(context, '/wallet'),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 18),
 
             // BOTTOM SECTION - KEEP AS IS:
             // Core Ride & Rental Services (Rent A Car Catalog + Hire Verified Driver)
@@ -687,149 +724,6 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
               icon: Icons.person_pin,
               color: const Color(0xFF2E8B57),
               onTap: () => Navigator.pushNamed(context, '/hire_driver'),
-            ),
-            const SizedBox(height: 16),
-
-            // NEW - BECOME A RIDER OR DRIVER BIG CARD WITH 3 BUTTONS (0=Driver, 1=Rent Owner, 2=Hire Driver)
-            Card(
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-              elevation: 3,
-              color: const Color(0xFF0D1B68),
-              child: Padding(
-                padding: const EdgeInsets.all(14),
-                child: Column(
-                  children: [
-                    InkWell(
-                      borderRadius: BorderRadius.circular(12),
-                      onTap: () {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (_) => const CreateDriverProfileScreen(initialTabIndex: 0),
-                          ),
-                        );
-                      },
-                      child: Row(
-                        children: [
-                          Container(
-                            padding: const EdgeInsets.all(10),
-                            decoration: BoxDecoration(
-                              color: const Color(0xFFFF8C00).withOpacity(0.25),
-                              shape: BoxShape.circle,
-                            ),
-                            child: const Icon(Icons.assignment_ind, color: Color(0xFFFF8C00), size: 26),
-                          ),
-                          const SizedBox(width: 14),
-                          const Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  'Become a Rider or Driver',
-                                  style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: Colors.white),
-                                ),
-                                SizedBox(height: 2),
-                                Text(
-                                  'Create Profile • Partner Onboarding • Join Us',
-                                  style: TextStyle(fontSize: 11, color: Color(0xFFFFB366)),
-                                ),
-                              ],
-                            ),
-                          ),
-                          const Icon(Icons.arrow_forward_ios, size: 16, color: Colors.white),
-                        ],
-                      ),
-                    ),
-                    const SizedBox(height: 10),
-                    const Divider(color: Colors.white24, height: 1),
-                    const SizedBox(height: 10),
-                    Row(
-                      children: [
-                        Expanded(
-                          child: InkWell(
-                            onTap: () {
-                              Navigator.push(
-                                context,
-                                MaterialPageRoute(
-                                  builder: (_) => const CreateDriverProfileScreen(initialTabIndex: 0),
-                                ),
-                              );
-                            },
-                            child: Container(
-                              padding: const EdgeInsets.symmetric(vertical: 6),
-                              decoration: BoxDecoration(
-                                color: Colors.white.withOpacity(0.12),
-                                borderRadius: BorderRadius.circular(8),
-                              ),
-                              child: const Column(
-                                children: [
-                                  Icon(Icons.drive_eta, color: Color(0xFFFF8C00), size: 18),
-                                  SizedBox(height: 2),
-                                  Text('Driver (0)', style: TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold)),
-                                ],
-                              ),
-                            ),
-                          ),
-                        ),
-                        const SizedBox(width: 6),
-                        Expanded(
-                          child: InkWell(
-                            onTap: () {
-                              Navigator.push(
-                                context,
-                                MaterialPageRoute(
-                                  builder: (_) => const CreateDriverProfileScreen(initialTabIndex: 1),
-                                ),
-                              );
-                            },
-                            child: Container(
-                              padding: const EdgeInsets.symmetric(vertical: 6),
-                              decoration: BoxDecoration(
-                                color: Colors.white.withOpacity(0.12),
-                                borderRadius: BorderRadius.circular(8),
-                              ),
-                              child: const Column(
-                                children: [
-                                  Icon(Icons.car_rental, color: Color(0xFFFF8C00), size: 18),
-                                  SizedBox(height: 2),
-                                  Text('Rent Owner (1)', style: TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold)),
-                                ],
-                              ),
-                            ),
-                          ),
-                        ),
-                        const SizedBox(width: 6),
-                        Expanded(
-                          child: InkWell(
-                            onTap: () {
-                              Navigator.push(
-                                context,
-                                MaterialPageRoute(
-                                  builder: (_) => const CreateDriverProfileScreen(initialTabIndex: 2),
-                                ),
-                              );
-                            },
-                            child: Container(
-                              padding: const EdgeInsets.symmetric(vertical: 6),
-                              decoration: BoxDecoration(
-                                color: Colors.white.withOpacity(0.12),
-                                borderRadius: BorderRadius.circular(8),
-                              ),
-                              child: const Column(
-                                children: [
-                                  Icon(Icons.badge, color: Color(0xFFFF8C00), size: 18),
-                                  SizedBox(height: 2),
-                                  Text('Hire Driver (2)', style: TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold)),
-                                ],
-                              ),
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
-              ),
             ),
             const SizedBox(height: 16),
 
@@ -939,6 +833,8 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
       case 'Mini Cab': return '₹80';
       case 'Sedan': return '₹100';
       case 'SUV': return '₹150';
+      case 'Parcel': return '₹50';
+      case 'Wallet': return '₹1,200';
       default: return '₹100';
     }
   }
@@ -949,10 +845,11 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
     required String fare,
     required IconData icon,
     required Color color,
+    VoidCallback? onCustomTap,
   }) {
     final bool isSelected = _selectedService == title;
     return GestureDetector(
-      onTap: () => setState(() => _selectedService = title),
+      onTap: onCustomTap ?? () => setState(() => _selectedService = title),
       child: Container(
         padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 6),
         decoration: BoxDecoration(

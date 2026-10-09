@@ -4,7 +4,19 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 class LogoHelper {
   static const String _key = 'custom_logo_path';
-  static Future<void> init() async {}
+  static Future<void> init() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final customPath = prefs.getString(_key);
+      if (customPath != null) {
+        final file = File(customPath);
+        if (file.existsSync()) {
+          file.deleteSync();
+        }
+        await prefs.remove(_key);
+      }
+    } catch (_) {}
+  }
   static Widget getLogo({double size = 80}) {
     return Icon(Icons.verified_user, size: size, color: Colors.orange);
   }
